@@ -14,10 +14,24 @@ def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def _batting_stats_with_fallback(season: int, min_pa: int) -> pd.DataFrame:
+    """Fetch FanGraphs batting stats, falling back to lower qual thresholds early in the season."""
+    import pybaseball
+
+    for qual in (min_pa, min_pa // 2, 1):
+        try:
+            df = pybaseball.batting_stats(season, qual=qual)
+            if df is not None and not df.empty:
+                return df
+        except Exception:
+            continue
+    return pd.DataFrame()
+
+
 def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[str, object]]:
     import pybaseball  # lazy import so tests don't require the package
 
-    df: pd.DataFrame = pybaseball.batting_stats(season, qual=min_pa)
+    df: pd.DataFrame = _batting_stats_with_fallback(season, min_pa)
 
     records = []
     for _, row in df.iterrows():
@@ -51,7 +65,16 @@ def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[s
 def _fetch_pitchers(season: int, days_back: int, min_ip: int = 10) -> list[dict[str, object]]:
     import pybaseball
 
-    df: pd.DataFrame = pybaseball.pitching_stats(season, qual=min_ip)
+    df: pd.DataFrame | None = None
+    for qual in (min_ip, min_ip // 2, 1):
+        try:
+            df = pybaseball.pitching_stats(season, qual=qual)
+            if df is not None and not df.empty:
+                break
+        except Exception:
+            continue
+    if df is None or df.empty:
+        return []
 
     records = []
     for _, row in df.iterrows():

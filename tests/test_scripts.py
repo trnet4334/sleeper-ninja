@@ -27,9 +27,14 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(len(payload["sources"]), 4)
 
     def test_fetch_all_runs_for_single_source(self) -> None:
+        # savant fetches real Statcast data; assert structure, not exact row count
         payload = json.loads(self.run_script("scripts/fetch_all.py", "--source", "savant", "--days", "7"))
-        self.assertEqual(payload["sources"][0]["source"], "savant")
-        self.assertEqual(payload["sources"][0]["rows"], 2)
+        result = payload["sources"][0]
+        self.assertEqual(result["source"], "savant")
+        self.assertIn("batters", result)
+        self.assertIn("pitchers", result)
+        self.assertIsInstance(result["batters"], int)
+        self.assertIsInstance(result["pitchers"], int)
 
 
 if __name__ == "__main__":
