@@ -1,0 +1,5 @@
+httpx>=0.28,<0.29
+pandas>=2.3,<3
+pybaseball>=2.2,<3
+PyYAML>=6.0,<7
+supabase>=2.0,<3

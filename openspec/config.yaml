@@ -1,0 +1,46 @@
+schema: spec-driven
+
+context: |
+  Project: Sleeper Ninja, a fantasy baseball dashboard for waiver discovery, roster analysis,
+  H2H matchup planning, trade analysis, and player exploration.
+
+  Tech stack:
+  - Python
+  - Streamlit for the dashboard UI
+  - Plotly for charts
+  - st.dataframe and AgGrid for tables
+  - APScheduler for scheduled refreshes
+  - Yahoo Fantasy API with OAuth 2.0
+  - Baseball Savant / Statcast and MLB Stats APIs for baseball data
+  - YAML config files
+  - .env for secrets
+
+  Intended architecture:
+  - src/pipeline for external data ingestion
+  - src/yahoo for auth, roster sync, and matchup data
+  - src/analysis for fantasy and Statcast analysis logic
+  - src/dashboard for Streamlit pages and reusable UI components
+  - scripts for setup, refresh, exports, and scheduling
+
+  Domain conventions:
+  - The app is league-aware and category-driven
+  - Recommendations should map to fantasy categories, not only generic player quality
+  - Prefer expected metrics and Statcast signals when explaining player upside or regression
+  - Injury status and playing opportunity should influence recommendations
+
+  Engineering conventions:
+  - Keep ingestion, Yahoo integration, analysis, and UI concerns separated
+  - Prefer configuration-driven league behavior over hardcoded rules
+  - Never commit secrets from .env
+  - Treat data/cache as generated artifacts
+  - Preserve the page structure: sleeper report, my roster, H2H matchup, trade analyzer, stat explorer
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

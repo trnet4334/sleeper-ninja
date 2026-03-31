@@ -1,0 +1,36 @@
+.DS_Store
+
+# Local agent / editor state
+.claude/
+.codex/
+.gemini/
+
+# Node
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Generated project data
+data/cache/
+data/exports/
+
+# Planning scratch space
+prototype/

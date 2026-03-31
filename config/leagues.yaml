@@ -1,0 +1,21 @@
+leagues:
+  viva_el_birdos:
+    yahoo_league_id: "YOUR_ID"
+    categories:
+      hitter: [R, HR, RBI, SB, TB, AVG, OBP]
+      pitcher: [W, SV, K, HLD, ERA, WHIP, QS]
+
+  lets_go_fans:
+    yahoo_league_id: "YOUR_ID"
+    categories:
+      hitter: [H, SB, BB, K, TB, AVG, OBP, SLG]
+      pitcher: [IP, K, ERA, WHIP, K/BB, RAPP, QS, SV+H]
+
+cache:
+  statcast_ttl_hours: 12
+  yahoo_roster_ttl_hours: 1
+  injury_ttl_hours: 6
+
+scheduler:
+  daily_fetch_time: "07:00"
+  timezone: "Asia/Taipei"

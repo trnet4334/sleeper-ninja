@@ -1,0 +1,12 @@
+mappings:
+  AVG: [xBA, BABIP]
+  OBP: [xwOBA, BB%]
+  SLG: [xSLG, Barrel%, EV]
+  HR: [Barrel%, HardHit%, xSLG]
+  SB: [Sprint Speed]
+  TB: [xSLG, EV]
+  ERA: [xERA, xwOBA_against]
+  WHIP: [BB%, xwOBA_against]
+  K: [SwStr%, CSW%, K%]
+  QS: [xFIP, xERA]
+  K/BB: [K%, BB%, CSW%]
