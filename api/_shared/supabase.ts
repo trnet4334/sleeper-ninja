@@ -70,6 +70,33 @@ export function mapDbPlayerToApi(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Local file fallback (populated by scripts/fetch_all.py when Supabase is not configured)
+// Files are written to public/exports/ and served as static assets by Vite.
+// ---------------------------------------------------------------------------
+export async function queryPlayersFromFile(
+  query: DataQuery,
+  requestedMetrics: string[]
+): Promise<ReturnType<typeof mapDbPlayerToApi>[] | null> {
+  const isHitter = query.playerType === "hitter";
+  const table = isHitter ? "statcast_batters" : "statcast_pitchers";
+  const columnMap = isHitter ? BATTER_DB_TO_METRIC : PITCHER_DB_TO_METRIC;
+  const daysBack = query.daysBack ?? 14;
+
+  try {
+    // Works in both browser (Vite serves public/) and local API server (absolute URL)
+    const baseUrl = typeof window !== "undefined" ? "" : "http://localhost:3001";
+    const res = await fetch(`${baseUrl}/exports/${table}.json`);
+    if (!res.ok) return null;
+    const rows = (await res.json()) as DbPlayer[];
+    const filtered = rows.filter((r) => r.days_back === daysBack);
+    if (filtered.length === 0) return null;
+    return filtered.map((row) => mapDbPlayerToApi(row, requestedMetrics, columnMap));
+  } catch {
+    return null;
+  }
+}
+
 export async function queryPlayersFromDb(
   query: DataQuery,
   requestedMetrics: string[],

@@ -40,10 +40,25 @@ def write_rows(
     target = EXPORT_DIR / f"last_write_{table}.json"
     target.write_text(json.dumps({"contract": contract, "preview": rows[:2]}, indent=2, sort_keys=True))
 
+    # Write full rows for local dev UI fallback (served as static assets by Vite)
+    public_exports = REPO_ROOT / "public" / "exports"
+    public_exports.mkdir(parents=True, exist_ok=True)
+    (public_exports / f"{table}.json").write_text(json.dumps(rows, indent=2))
+
     if config["configured"] and rows:
         from supabase import create_client  # lazy import — only needed when configured
 
+        # Deduplicate by conflict key before upserting (avoids "cannot affect row a second time")
+        conflict_cols = [c.strip() for c in on_conflict.split(",")]
+        seen: set[tuple] = set()
+        deduped = []
+        for row in rows:
+            key = tuple(row.get(c) for c in conflict_cols)
+            if key not in seen:
+                seen.add(key)
+                deduped.append(row)
+
         client = create_client(str(config["url"]), str(config["key"]))
-        client.table(table).upsert(rows, on_conflict=on_conflict).execute()
+        client.table(table).upsert(deduped, on_conflict=on_conflict).execute()
 
     return contract

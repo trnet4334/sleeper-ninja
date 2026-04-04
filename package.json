@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "npx tsx scripts/local_server.ts",
+    "dev:full": "concurrently \"npm run dev:api\" \"vite\"",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint src api vite.config.ts tailwind.config.ts --ext .ts,.tsx",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^18.3.6",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
     "eslint": "^9.24.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

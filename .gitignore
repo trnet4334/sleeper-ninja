@@ -31,6 +31,7 @@ venv/
 # Generated project data
 data/cache/
 data/exports/
+public/exports/
 
 # Planning scratch space
 prototype/

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from datetime import datetime
 
@@ -105,14 +106,16 @@ def _fetch_pitchers(season: int, days_back: int, min_ip: int = 10) -> list[dict[
 
 def _f(val: object) -> float | None:
     try:
-        return float(val)  # type: ignore[arg-type]
+        f = float(val)  # type: ignore[arg-type]
+        return None if math.isnan(f) else f
     except (TypeError, ValueError):
         return None
 
 
 def _i(val: object) -> int | None:
     try:
-        return int(float(val))  # type: ignore[arg-type]
+        f = float(val)  # type: ignore[arg-type]
+        return None if math.isnan(f) else int(f)
     except (TypeError, ValueError):
         return None
 

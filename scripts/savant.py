@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from datetime import datetime
 
@@ -24,7 +25,8 @@ def _normalize_name(raw: str) -> str:
 
 def _f(val: object) -> float | None:
     try:
-        return float(val)  # type: ignore[arg-type]
+        f = float(val)  # type: ignore[arg-type]
+        return None if math.isnan(f) else f
     except (TypeError, ValueError):
         return None
 

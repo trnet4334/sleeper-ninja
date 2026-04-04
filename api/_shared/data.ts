@@ -257,10 +257,18 @@ export async function queryPlayersWithFallback(
   query: DataQuery,
   rosterState?: SamplePlayer["rosterState"]
 ) {
-  const { queryPlayersFromDb } = await import("./supabase");
+  const { queryPlayersFromDb, queryPlayersFromFile } = await import("./supabase");
   const selectedStats = expandStats(query.categories, query.stats);
+
+  // 1. Try Supabase (configured via env vars)
   const live = await queryPlayersFromDb(query, selectedStats, rosterState);
   if (live !== null) return live;
+
+  // 2. Try local file exports (populated by scripts/fetch_all.py)
+  const fromFile = await queryPlayersFromFile(query, selectedStats);
+  if (fromFile !== null) return fromFile;
+
+  // 3. Fall back to hardcoded sample players
   return queryPlayers(query, rosterState);
 }
 
