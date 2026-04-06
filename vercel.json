@@ -1,8 +1,6 @@
 {
   "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "api/_shared/**"
-    }
+    "api/**/*.cjs": {}
   },
   "rewrites": [
     {
