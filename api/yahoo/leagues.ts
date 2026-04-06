@@ -1,4 +1,4 @@
-import { json } from "../_shared/http";
+import { json } from "../_shared/http.js";
 import {
   encryptToken,
   isTokenExpired,
@@ -7,7 +7,7 @@ import {
   setCookieHeader,
   toTokenRecord,
   type YahooOAuthExchangeResult
-} from "../_shared/yahoo";
+} from "../_shared/yahoo.js";
 
 export interface LeagueResult {
   id: string;
@@ -24,11 +24,11 @@ export function parseYahooLeagues(data: unknown): LeagueResult[] {
   try {
     const fc = (data as Record<string, unknown>)?.fantasy_content;
     const users = (fc as Record<string, unknown>)?.users;
-    const userEntry = (users as Record<string, unknown>)?.["0"]?.user;
+    const userEntry = ((users as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.user;
     if (!Array.isArray(userEntry) || userEntry.length < 2) return [];
 
     const games = (userEntry[1] as Record<string, unknown>)?.games;
-    const gameEntry = (games as Record<string, unknown>)?.["0"]?.game;
+    const gameEntry = ((games as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.game;
     if (!Array.isArray(gameEntry) || gameEntry.length < 2) return [];
 
     const leaguesObj = (gameEntry[1] as Record<string, unknown>)?.leagues;

@@ -1,4 +1,4 @@
-import { json } from "../_shared/http";
+import { json } from "../_shared/http.js";
 import {
   encryptToken,
   hasYahooConfig,
@@ -6,7 +6,7 @@ import {
   setCookieHeader,
   toTokenRecord,
   type YahooOAuthExchangeResult
-} from "../_shared/yahoo";
+} from "../_shared/yahoo.js";
 
 async function exchangeCode(
   code: string,

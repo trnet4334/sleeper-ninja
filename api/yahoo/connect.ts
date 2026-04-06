@@ -1,5 +1,5 @@
-import { json } from "../_shared/http";
-import { buildYahooAuthUrl, hasYahooConfig } from "../_shared/yahoo";
+import { json } from "../_shared/http.js";
+import { buildYahooAuthUrl, hasYahooConfig } from "../_shared/yahoo.js";
 
 export function handler(
   request: Request = new Request("http://localhost/api/yahoo/connect"),

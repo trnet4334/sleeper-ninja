@@ -1,5 +1,5 @@
-import { json } from "../_shared/http";
-import { parseCookieToken } from "../_shared/yahoo";
+import { json } from "../_shared/http.js";
+import { parseCookieToken } from "../_shared/yahoo.js";
 
 export async function handler(
   request: Request,

@@ -1,5 +1,5 @@
-import { json } from "./http";
-import { relatedStatsForCategory } from "../../src/lib/statMapping";
+import { json } from "./http.js";
+import { relatedStatsForCategory } from "../../src/lib/statMapping.js";
 
 export interface DataQuery {
   leagueId: string;
@@ -257,7 +257,7 @@ export async function queryPlayersWithFallback(
   query: DataQuery,
   rosterState?: SamplePlayer["rosterState"]
 ) {
-  const { queryPlayersFromDb, queryPlayersFromFile } = await import("./supabase");
+  const { queryPlayersFromDb, queryPlayersFromFile } = await import("./supabase.js");
   const selectedStats = expandStats(query.categories, query.stats);
 
   // 1. Try Supabase (configured via env vars)
@@ -275,7 +275,7 @@ export async function queryPlayersWithFallback(
 export async function analysisSummaryAsync(query: DataQuery) {
   const players = await queryPlayersWithFallback(query, "waiver");
   const top = players[0];
-  const hotPlayers = players.filter((p) => p.delta >= (query.playerType === "hitter" ? 0.05 : 0.5)).length;
+  const hotPlayers = players.filter((p: { delta: number }) => p.delta >= (query.playerType === "hitter" ? 0.05 : 0.5)).length;
   return {
     leagueId: query.leagueId,
     playerType: query.playerType,

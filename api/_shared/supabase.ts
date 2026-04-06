@@ -1,5 +1,12 @@
-import { createServerSupabaseClient } from "../../src/lib/supabase";
-import type { DataQuery } from "./data";
+import { createClient } from "@supabase/supabase-js";
+import type { DataQuery } from "./data.js";
+
+function createServerSupabaseClient(env: Record<string, string | undefined>) {
+  const url = env.VITE_SUPABASE_URL ?? env.SUPABASE_URL ?? "";
+  const serviceKey = env.SUPABASE_SERVICE_KEY ?? "";
+  if (!url || !serviceKey) return null;
+  return createClient(url, serviceKey, { auth: { persistSession: false } });
+}
 
 // ---------------------------------------------------------------------------
 // Batter column → display metric key mapping

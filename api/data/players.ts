@@ -1,4 +1,4 @@
-import { ok, parseDataQuery, queryPlayersWithFallback } from "../_shared/data";
+import { ok, parseDataQuery, queryPlayersWithFallback } from "../_shared/data.js";
 
 export async function handler(request: Request = new Request("http://localhost/api/data/players")) {
   const query = parseDataQuery(request);

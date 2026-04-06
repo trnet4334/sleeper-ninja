@@ -1,4 +1,4 @@
-import { clearCookieHeader } from "../_shared/yahoo";
+import { clearCookieHeader } from "../_shared/yahoo.js";
 
 export function handler(): Response {
   return new Response(JSON.stringify({ status: "disconnected" }), {
