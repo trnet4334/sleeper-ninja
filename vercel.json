@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/**/*.cjs": {}
+    "api/**/*.cjs": { "maxDuration": 10 }
   },
   "rewrites": [
     {
