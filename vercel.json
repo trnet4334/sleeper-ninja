@@ -1,6 +1,6 @@
 {
   "builds": [
-    { "src": "api/{data,yahoo}/*.ts", "use": "@vercel/node" }
+    { "src": "api/{data,yahoo}/[^_]*.ts", "use": "@vercel/node" }
   ],
   "rewrites": [
     {
