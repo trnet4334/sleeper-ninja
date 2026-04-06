@@ -1,13 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { handler as connectHandler } from "./connect";
-import { handler as callbackHandler } from "./callback";
-import { handler as statusHandler } from "./status";
-import { handler as disconnectHandler } from "./disconnect";
-import { handler as transactionsHandler } from "./transactions";
-import { handler as rosterHandler } from "./roster";
-import { handler as matchupHandler } from "./matchup";
-import { handler as leaguesHandler, parseYahooLeagues } from "./leagues";
-import { buildYahooAuthUrl, encryptToken, toTokenRecord } from "../_shared/yahoo";
+import { handler as connectHandler } from "./connect.js";
+import { handler as callbackHandler } from "./callback.js";
+import { handler as statusHandler } from "./status.js";
+import { handler as disconnectHandler } from "./disconnect.js";
+import { handler as transactionsHandler } from "./transactions.js";
+import { handler as rosterHandler } from "./roster.js";
+import { handler as matchupHandler } from "./matchup.js";
+import { handler as leaguesHandler, parseYahooLeagues } from "./leagues.js";
+import { buildYahooAuthUrl, encryptToken, toTokenRecord } from "../_shared/yahoo.js";
 
 const env = {
   YAHOO_CLIENT_ID: "client",

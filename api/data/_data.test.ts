@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { handler as playersHandler } from "./players";
-import { handler as analysisHandler } from "./analysis";
-import { handler as matchupHandler } from "./matchup";
-import { expandStats } from "../_shared/data";
+import { handler as playersHandler } from "./players.js";
+import { handler as analysisHandler } from "./analysis.js";
+import { handler as matchupHandler } from "./matchup.js";
+import { expandStats } from "../_shared/data.js";
 
 describe("data api", () => {
   it("expands related stats from requested categories", () => {
