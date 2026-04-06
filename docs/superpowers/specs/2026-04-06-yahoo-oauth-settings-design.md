@@ -5,15 +5,18 @@
 
 ## Overview
 
-Wire the existing Yahoo OAuth backend into the UI. The connect banner already works; this spec covers exposing connect/disconnect controls in the Settings page and updating `useYahooAuth` to support imperative disconnect.
+Wire the existing Yahoo OAuth backend into the UI across three areas:
+1. **Settings → Yahoo Account panel** — connect / disconnect
+2. **Settings → Leagues** — auto-sync from Yahoo when connected; keep manual add as fallback
+3. **Matchup Analysis page** — gate behind Yahoo OAuth; show connect prompt when not connected
 
 ## Scope
 
-- Banner behavior: already correct — no change required
-- Settings page: add a "Yahoo Account" panel (connect / disconnect)
-- `useYahooAuth` hook: expose a `disconnect()` method
+- Banner behavior: already correct (`!connected && !authLoading`) — no change required
+- All backend OAuth routes already exist (`/connect`, `/callback`, `/status`, `/disconnect`)
+- New backend endpoint needed: `GET /api/yahoo/leagues` — fetch user's Yahoo fantasy leagues
 
-Out of scope: new API endpoints (all backend routes already exist).
+Out of scope: real matchup data wiring (page already uses stub data; we only add the auth gate).
 
 ## Architecture
 
@@ -21,29 +24,23 @@ Out of scope: new API endpoints (all backend routes already exist).
 
 | File | Purpose |
 |------|---------|
-| `src/components/settings/YahooAccountPanel.tsx` | UI card — shows connection status, connect link, disconnect button |
+| `src/components/settings/YahooAccountPanel.tsx` | Connect / disconnect UI card |
+| `api/yahoo/leagues.ts` | Fetch user's Yahoo MLB fantasy leagues, return `LeagueDefinition[]` |
 
 ### Files to modify
 
 | File | Change |
 |------|--------|
-| `src/hooks/useYahooAuth.ts` | Add `disconnect()` async method that calls `POST /api/yahoo/disconnect` and updates local state |
-| `src/pages/Settings.tsx` | Import `useYahooAuth` and `YahooAccountPanel`; add fourth card to the grid |
+| `src/hooks/useYahooAuth.ts` | Add `disconnect()` async method |
+| `src/pages/Settings.tsx` | Add `YahooAccountPanel`; pass `connected` to `LeagueManager` |
+| `src/components/settings/LeagueManager.tsx` | When connected, show Yahoo-synced leagues above manual-add form |
+| `src/pages/H2HMatchup.tsx` | Add `useYahooAuth` gate; show connect prompt when not connected |
 
-## Data Flow
+---
 
-```
-Settings page
-  └── useYahooAuth()  →  GET /api/yahoo/status  →  { connected: boolean }
-        └── disconnect()  →  POST /api/yahoo/disconnect  →  clears cookie
-                              └── sets connected = false locally (no refetch)
+## Section 1 — Yahoo Account Panel
 
-YahooAccountPanel
-  ├── connected=false  →  <a href="/api/yahoo/connect"> (full-page redirect → Yahoo OAuth)
-  └── connected=true   →  <button onClick={disconnect}>
-```
-
-## Component Spec: YahooAccountPanel
+### Component: `YahooAccountPanel`
 
 Props:
 ```typescript
@@ -55,11 +52,13 @@ interface Props {
 ```
 
 States:
-- **loading**: show skeleton / disabled state
-- **connected=false**: amber "Connect Yahoo Fantasy" link button → `/api/yahoo/connect`
-- **connected=true**: green "Connected" status badge + "Disconnect" button
+- **loading**: disabled skeleton
+- **connected=false**: amber "Connect Yahoo Fantasy" → `<a href="/api/yahoo/connect">`
+- **connected=true**: green "Connected" badge + "Disconnect" button
 
-## Hook Spec: useYahooAuth (updated)
+### Hook update: `useYahooAuth`
+
+Return type gains `disconnect()`:
 
 ```typescript
 interface YahooAuthState {
@@ -69,35 +68,142 @@ interface YahooAuthState {
 }
 ```
 
-`disconnect()`:
-1. Calls `POST /api/yahoo/disconnect`
-2. On success (any 2xx): sets `connected = false` immediately
-3. On error: no state change (leave UI as-is, let user retry)
+`disconnect()` flow:
+1. `POST /api/yahoo/disconnect`
+2. On 2xx → set `connected = false` locally (no refetch)
+3. On error → no-op (user can retry)
+
+---
+
+## Section 2 — League Auto-Sync
+
+### New API endpoint: `GET /api/yahoo/leagues`
+
+- Reads `yahoo_token` cookie, validates it (refresh if expired)
+- Calls Yahoo Fantasy API: `GET https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=mlb/leagues?format=json`
+- Returns `LeagueDefinition[]`:
+
+```typescript
+interface LeagueDefinition {
+  id: string;          // slugified league name
+  name: string;        // Yahoo league name
+  yahooLeagueId: string; // numeric Yahoo league ID
+  season: number;      // current season year
+}
+```
+
+- 401 if no/invalid token
+- 502 if Yahoo API fails
+
+### Hook: `useYahooLeagues`
+
+New hook at `src/hooks/useYahooLeagues.ts`:
+
+```typescript
+export function useYahooLeagues(enabled: boolean): {
+  leagues: LeagueDefinition[];
+  loading: boolean;
+}
+```
+
+Only fetches when `enabled = true` (i.e., `connected = true`).
+
+### LeagueManager update
+
+When `connected = true`:
+- Show Yahoo-synced leagues (from `useYahooLeagues`) with a "From Yahoo" badge
+- Sync button to re-fetch (optional, nice-to-have)
+- Manual add form remains below, labelled "Add manually"
+
+When `connected = false`:
+- Show only manually-added leagues (current behavior)
+- Manual add form as usual
+
+Yahoo leagues are **display only** — they do not overwrite `localStorage`. The user's manually-added leagues persist separately. If a Yahoo league already exists in localStorage (matched by `yahooLeagueId`), show it once (deduped).
+
+---
+
+## Section 3 — Matchup Analysis Gate
+
+### H2HMatchup page
+
+Add `useYahooAuth()` at top. Conditional render:
+
+```tsx
+if (!connected && !loading) {
+  return <YahooConnectPrompt />  // inline component, not a full page
+}
+// existing page content unchanged
+```
+
+### `YahooConnectPrompt` (inline, no separate file)
+
+Simple centered card:
+```
+┌─────────────────────────────────────┐
+│  Matchup Analysis                   │
+│                                     │
+│  Connect Yahoo Fantasy to view      │
+│  your head-to-head matchup data.    │
+│                                     │
+│  [Connect Yahoo Fantasy]            │
+└─────────────────────────────────────┘
+```
+Button → `<a href="/api/yahoo/connect">`.
+
+---
 
 ## Settings Page Layout
 
-Existing three-column grid gains a fourth card:
+Add Yahoo Account panel as a **full-width row** below the existing three-column grid:
 
 ```
-┌──────────┬──────────┬──────────┬──────────────────┐
-│ Leagues  │Categories│Prefs     │ Yahoo Account    │
-└──────────┴──────────┴──────────┴──────────────────┘
+┌──────────┬────────────┬──────────────┐
+│ Leagues  │ Categories │ Preferences  │
+└──────────┴────────────┴──────────────┘
+┌──────────────────────────────────────┐
+│ Yahoo Account                        │
+└──────────────────────────────────────┘
 ```
 
-Grid changes from `lg:grid-cols-3` to `lg:grid-cols-4`, or Yahoo Account spans full width below — whichever fits the existing layout better. Prefer adding as a new full-width row below the existing three cards to avoid cramping.
+---
+
+## Data Flow Summary
+
+```
+useYahooAuth()
+  ├── GET /api/yahoo/status          → connected: boolean
+  └── disconnect() → POST /api/yahoo/disconnect → connected = false
+
+useYahooLeagues(connected)
+  └── GET /api/yahoo/leagues         → LeagueDefinition[]
+        └── Yahoo Fantasy API
+
+H2HMatchup
+  └── useYahooAuth() → gate render
+
+LeagueManager
+  └── useYahooLeagues(connected) → show Yahoo leagues
+      manual add form → useLeagues().addLeague() (localStorage)
+```
+
+---
 
 ## Error Handling
 
-- `disconnect()` failure: silently no-op (connection status stays; user can retry)
-- `/api/yahoo/status` fetch failure: `connected = false`, `loading = false` (already implemented)
+| Scenario | Behaviour |
+|----------|-----------|
+| `/api/yahoo/leagues` 401 | `useYahooLeagues` returns `[]`, shows no Yahoo leagues |
+| `/api/yahoo/leagues` 502 | Same — fall back silently |
+| `disconnect()` fails | No-op; connected state unchanged |
+| Yahoo token expired | `api/yahoo/leagues` refreshes token transparently (same pattern as `roster.ts`) |
 
-## Environment Variables Required
+## Environment Variables
 
+No new env vars. All existing vars apply:
 ```
-YAHOO_CLIENT_ID=...
-YAHOO_CLIENT_SECRET=...
-VITE_APP_URL=http://localhost:5173   # or production URL
-COOKIE_SECRET=<32-char random string>
+YAHOO_CLIENT_ID
+YAHOO_CLIENT_SECRET
+VITE_APP_URL
+COOKIE_SECRET
 ```
-
-No new env vars needed.
