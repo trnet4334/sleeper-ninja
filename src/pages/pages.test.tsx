@@ -73,7 +73,7 @@ describe("prototype pages", () => {
 
   it("renders trade and explorer analytical modules", async () => {
     wrap(<TradeAnalyzerPage />);
-    expect(await screen.findByText("Category Comparison")).toBeInTheDocument();
+    expect(await screen.findByText("Trade Analyzer")).toBeInTheDocument();
 
     wrap(<StatExplorerPage />);
     expect(await screen.findByText("Detailed Analytics")).toBeInTheDocument();

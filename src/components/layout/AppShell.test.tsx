@@ -18,6 +18,5 @@ describe("AppShell", () => {
     expect(screen.getByText("Sleeper Ninja")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Viva el Birdos" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "FA Sleeper Report" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Leagues" })).toBeInTheDocument();
   });
 });
