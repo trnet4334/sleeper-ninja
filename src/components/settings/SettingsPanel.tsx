@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CategoryManager } from "./CategoryManager";
 import { LeagueManager } from "./LeagueManager";
 import { StatPreferencesPanel } from "./StatPreferences";
+import { useYahooAuth } from "@/hooks/useYahooAuth";
 
 const tabs = [
   { id: "leagues", label: "Leagues" },
@@ -11,6 +12,7 @@ const tabs = [
 
 export function SettingsPanel() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]["id"]>("leagues");
+  const { connected } = useYahooAuth();
 
   return (
     <div className="mt-10 space-y-4">
@@ -43,7 +45,7 @@ export function SettingsPanel() {
             aria-labelledby={`settings-tab-${tab.id}`}
             hidden={activeTab !== tab.id}
           >
-            {tab.id === "leagues" ? <LeagueManager /> : null}
+            {tab.id === "leagues" ? <LeagueManager connected={connected} /> : null}
             {tab.id === "categories" ? <CategoryManager /> : null}
             {tab.id === "preferences" ? <StatPreferencesPanel /> : null}
           </div>
