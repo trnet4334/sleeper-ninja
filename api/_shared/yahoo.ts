@@ -140,7 +140,9 @@ export async function decryptToken(encrypted: string, secret: string): Promise<o
     combined.set(authTag, ciphertext.length);
 
     const key = await deriveKey(secret);
-    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, combined);
+    const ivBuf = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer;
+    const decryptBuf = combined.buffer.slice(combined.byteOffset, combined.byteOffset + combined.byteLength) as ArrayBuffer;
+    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, key, decryptBuf);
     return JSON.parse(new TextDecoder().decode(plainBuf)) as object;
   } catch {
     return null;
