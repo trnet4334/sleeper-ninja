@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts import adp, fangraphs, mlb_stats, savant
+from scripts import adp, backfill, fangraphs, mlb_stats, savant, scoring
 
 
 SOURCES = {
@@ -17,6 +17,8 @@ SOURCES = {
     "mlb_stats": mlb_stats.run,
     "fangraphs": fangraphs.run,
     "adp": adp.run,
+    "backfill": backfill.run,
+    "scoring": scoring.run,
 }
 
 
@@ -27,17 +29,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+DATA_SOURCES = ["savant", "mlb_stats", "fangraphs", "adp", "backfill"]
+
+
 def main() -> None:
     args = parse_args()
-    selected_sources = [args.source] if args.source else list(SOURCES.keys())
-    summary = {
-        "days": args.days,
-        "sources": [],
-    }
 
-    for source_name in selected_sources:
+    if args.source:
+        # Single-source run: run it, then always recompute scores
+        selected = [args.source] if args.source != "scoring" else []
+    else:
+        selected = DATA_SOURCES
+
+    summary: dict[str, object] = {"days": args.days, "sources": []}
+
+    for source_name in selected:
         result = SOURCES[source_name](days=args.days)
-        summary["sources"].append(result)
+        summary["sources"].append(result)  # type: ignore[union-attr]
+
+    # Always recompute F-scores after any data update
+    score_result = scoring.run(days=args.days)
+    summary["sources"].append(score_result)  # type: ignore[union-attr]
 
     print(json.dumps(summary, indent=2))
 

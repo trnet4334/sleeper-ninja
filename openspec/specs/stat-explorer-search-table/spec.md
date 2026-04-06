@@ -25,7 +25,7 @@ The page SHALL display three role filter tabs below the search bar: "Hitter", "S
 - **THEN** only relief/closer pitchers are shown
 
 ### Requirement: Breakout Alerts scroll row
-The page SHALL display a "Breakout Alerts" section with a horizontal snap-scroll row of player cards. Each card SHALL show: player name, position and team, two key metric values from `player.metrics`, and a short insight description (placeholder if no real text available). Cards SHALL be `w-72` fixed-width with `flex-none`.
+The page SHALL display a "Breakout Alerts" section with a horizontal snap-scroll row of player cards, and chevron left/right buttons in the section header that scroll the row by ~340px. Each card SHALL show: a round initials avatar (amber background), two key metric values in a 2-column mini-grid below the avatar, player name, position/team sub-label, and a short insight description. Cards SHALL be `w-[340px]` fixed-width with `flex-none` and include a `hover:border-primary/30` hover effect.
 
 #### Scenario: Breakout cards render
 - **WHEN** the Stat Explorer page loads with players available
@@ -36,7 +36,7 @@ The page SHALL display a "Breakout Alerts" section with a horizontal snap-scroll
 - **THEN** the player with the highest `recommendationScore` appears first (leftmost)
 
 ### Requirement: Detailed Analytics table
-The page SHALL display a "Detailed Analytics" table with columns: Player (name + position sub-label), Team, AVG, HR, RBI, xwOBA, SB, Trend badge. The table SHALL be paginated at 10 rows per page with PREV/NEXT buttons. Trend badge SHALL be "HOT" (amber) when `delta > 0.5`, "STEADY" (secondary) when neutral, "COLD" (error) when `delta < -0.5`.
+The page SHALL display a "Detailed Analytics" table with columns: Player (initials avatar + name + position sub-label), Team, AVG, HR, RBI, xwOBA, SB, Trend badge. The table SHALL be paginated at 10 rows per page with PREV/NEXT buttons. Trend badge SHALL use a 5-tier system: `recommendationScore ≥ 90 → ELITE` (tertiary/gold), `≥ 75 → MVP` (tertiary/gold), `≥ 60 → SPEED` (primary/amber), then delta-based `HOT` (amber, delta > 0.5), `COLD` (error, delta < -0.5), `STEADY` (secondary).
 
 #### Scenario: Table rows render from filtered player list
 - **WHEN** a role tab is active and players are available

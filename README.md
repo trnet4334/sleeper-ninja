@@ -1,77 +1,102 @@
 # Sleeper Ninja
 
-Sleeper Ninja is a fantasy baseball analytics web app built around a premium editorial dashboard experience. The v2 architecture uses a React + Vite frontend, Vercel-style API routes, Supabase-backed data services, and Python ingestion scripts.
+Fantasy baseball dashboard for waiver-wire discovery and roster decision-making, powered by Statcast and Yahoo Fantasy.
 
-## Stack
+## What it does
 
-- React + Vite + TypeScript
-- Tailwind CSS
-- React Router
-- Zustand + localStorage
-- TanStack Table
-- Recharts
-- Vite PWA
-- Supabase
-- Python ingestion scripts for scheduled baseball data refreshes
+| Page | Description |
+|---|---|
+| **FA Sleeper Report** | Ranks available free agents by F-Score — a multi-layer algorithm using category Z-scores, expected stats, contact quality, and recent trends |
+| **My Roster** | Syncs your Yahoo Fantasy roster and surfaces hold/drop signals |
+| **Matchup Analysis** | Projects H2H category outcomes for the current scoring week |
+| **Trade Analyzer** | Compares trade packages across your league's fantasy categories |
+| **Stat Explorer** | Free-form player search and stat comparison table |
+| **Prospects News** | Call-up and prospect coverage relevant to waiver decisions |
+| **Injury Update** | IL placements, return timelines, and status changes |
 
-## Repository Layout
+## Tech stack
 
-```text
-src/        frontend app
-api/        serverless route handlers
-scripts/    python ingestion and utility entrypoints
-public/     static and PWA assets
-tests/      python verification tests
-supabase/   schema and setup artifacts
-prototype/  archived product and design reference
-openspec/   planning artifacts
-```
+| Layer | Technology |
+|---|---|
+| Frontend | React + TypeScript + Vite |
+| Styling | Tailwind CSS |
+| API | Vercel Serverless Functions (TypeScript) |
+| Database | Supabase (PostgreSQL) |
+| Data pipeline | Python + pybaseball |
+| Auth | Yahoo Fantasy OAuth 2.0 |
 
-## Local Development
+## Data sources
+
+- **Baseball Savant / Statcast** — xBA, xSLG, xwOBA, barrel%, exit velocity, sprint speed
+- **FanGraphs** — traditional stats, xERA, xFIP, SwStr%, CSW%
+- **MLB Stats API** — injury / IL status
+- **FantasyPros** — ADP and position eligibility
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 18+
+- Python 3.11+
+- A Supabase project (or run locally — the app falls back to static JSON exports)
+
+### Frontend
 
 ```bash
 npm install
-npm run dev
+npm run dev          # UI only (port 5173)
+npm run dev:full     # UI + API serverless functions
 ```
 
-Python ingestion setup:
+### Data pipeline
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r scripts/requirements.txt
+
+# Fetch all sources and recompute F-scores
 python3 scripts/fetch_all.py
-python3 scripts/fetch_all.py --source savant --days 7
+
+# Single source (e.g. FanGraphs only)
+python3 scripts/fetch_all.py --source fangraphs
 ```
 
-## Environment
+Pipeline execution order: `savant → mlb_stats → fangraphs → adp → backfill → scoring`
 
-Frontend and server routes:
+### Environment variables
 
 ```bash
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_KEY=your-supabase-service-key
+VITE_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_KEY=your-service-key
 YAHOO_CLIENT_ID=your-yahoo-client-id
 YAHOO_CLIENT_SECRET=your-yahoo-client-secret
-NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app
 ```
 
-GitHub Actions secrets:
+### Supabase setup
 
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
+Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL Editor to create the required tables.
 
-## Supabase Setup
+## F-Score
 
-Run the schema in [supabase/schema.sql](/Users/stevy/Documents/Git/sleeper-ninja/supabase/schema.sql) inside Supabase SQL Editor.
+The ranking algorithm used in the Sleeper Report:
 
-## Deploy
+| Layer | Weight | Signal |
+|---|---|---|
+| Category Z-score | 60% | Relative performance vs. available player pool |
+| xStat correction | 15% | Expected stats filtering out luck |
+| Contact quality / stability | 10% | Barrel%, hard-hit%, whiff% |
+| Trend + injury | 15% | Recent hotness, IL return timing |
 
-- Frontend/API deployment uses Vercel with config in [vercel.json](/Users/stevy/Documents/Git/sleeper-ninja/vercel.json)
-- Daily refresh workflow lives in [.github/workflows/daily-data-refresh.yml](/Users/stevy/Documents/Git/sleeper-ninja/.github/workflows/daily-data-refresh.yml)
+**Delta** = `xwOBA − AVG` for hitters, `ERA − xERA` for pitchers. Positive delta = underperforming true talent = buy signal.
 
-## Quality Checks
+## Deployment
+
+- **Frontend + API**: Vercel ([`vercel.json`](vercel.json))
+- **Daily data refresh**: GitHub Actions ([`.github/workflows/daily-data-refresh.yml`](.github/workflows/daily-data-refresh.yml))
+
+## Quality checks
 
 ```bash
 npm run lint
@@ -81,8 +106,15 @@ npm run build
 python3 -m unittest discover -s tests -v
 ```
 
-## Product Direction
+## Repository layout
 
-- Rebuild the shell and page hierarchy to match `prototype/UIUX/dashboard.html`
-- Preserve league-aware fantasy workflows across Sleeper Report, Roster, Matchup, Trade, and Explorer
-- Support responsive layouts and installable PWA behavior from the first web release
+```
+src/          React frontend
+api/          Vercel serverless route handlers
+scripts/      Python data ingestion pipeline
+supabase/     Database schema
+public/       Static assets and local JSON fallbacks
+tests/        Python verification tests
+openspec/     Planning and spec artifacts
+prototype/    Archived design reference
+```

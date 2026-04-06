@@ -29,7 +29,7 @@ def _batting_stats_with_fallback(season: int, min_pa: int) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[str, object]]:
+def _fetch_batters(season: int, days_back: int, min_pa: int = 20) -> list[dict[str, object]]:
     import pybaseball  # lazy import so tests don't require the package
 
     df: pd.DataFrame = _batting_stats_with_fallback(season, min_pa)
@@ -39,6 +39,8 @@ def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[s
         name = str(row.get("Name", ""))
         if not name:
             continue
+        sb = _i(row.get("SB")) or 0
+        cs = _i(row.get("CS")) or 0
         records.append({
             "player_id": _slug(name),
             "days_back": days_back,
@@ -48,7 +50,7 @@ def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[s
             "avg": _f(row.get("AVG")),
             "obp": _f(row.get("OBP")),
             "hr": _i(row.get("HR")),
-            "sb": _i(row.get("SB")),
+            "sb": sb or None,
             "tb": _i(row.get("TB")),
             "bb": _i(row.get("BB")),
             "xba": _f(row.get("xBA")),
@@ -59,11 +61,16 @@ def _fetch_batters(season: int, days_back: int, min_pa: int = 50) -> list[dict[s
             "ev_avg": _f(row.get("EV")),
             "k_pct": _f(row.get("K%")),
             "bb_pct": _f(row.get("BB%")),
+            # F-score supplementary stats
+            "ld_pct": _f(row.get("LD%")),
+            "gb_pct": _f(row.get("GB%")),
+            "whiff_pct": _f(row.get("Whiff%")),
+            "sb_pct": round(sb / (sb + cs), 3) if (sb + cs) > 0 else None,
         })
     return records
 
 
-def _fetch_pitchers(season: int, days_back: int, min_ip: int = 10) -> list[dict[str, object]]:
+def _fetch_pitchers(season: int, days_back: int, min_ip: int = 5) -> list[dict[str, object]]:
     import pybaseball
 
     df: pd.DataFrame | None = None
@@ -82,12 +89,17 @@ def _fetch_pitchers(season: int, days_back: int, min_ip: int = 10) -> list[dict[
         name = str(row.get("Name", ""))
         if not name:
             continue
+        gs = _i(row.get("GS")) or 0
+        g = _i(row.get("G")) or 0
+        sv = _i(row.get("SV")) or 0
+        hld = _i(row.get("HLD")) or 0
+        role = "RP" if (sv > 0 or hld > 0 or (g > 0 and gs == 0)) else "SP"
         records.append({
             "player_id": _slug(name),
             "days_back": days_back,
             "player_name": name,
             "team": str(row.get("Team", "")),
-            "role": "SP",
+            "role": role,
             "era": _f(row.get("ERA")),
             "whip": _f(row.get("WHIP")),
             "k": _i(row.get("SO")),
@@ -100,6 +112,9 @@ def _fetch_pitchers(season: int, days_back: int, min_ip: int = 10) -> list[dict[
             "csw_pct": _f(row.get("CSW%")),
             "k_pct": _f(row.get("K%")),
             "bb_pct": _f(row.get("BB%")),
+            # F-score supplementary stats
+            "lob_pct": _f(row.get("LOB%")),
+            "gb_pct": _f(row.get("GB%")),
         })
     return records
 

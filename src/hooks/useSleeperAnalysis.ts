@@ -3,6 +3,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { useStatPrefs } from "@/hooks/useStatPrefs";
 import { fetchAnalysis, type AnalysisResponse } from "@/lib/apiClient";
 
+const DEFAULT_HITTER_CATS = ["HR", "SB", "AVG", "OBP", "BB", "TB"];
+const DEFAULT_PITCHER_CATS = ["ERA", "WHIP", "K", "SV", "QS", "W"];
+
 export function useSleeperAnalysis(playerType: "hitter" | "pitcher") {
   const { leagueId, hitterCats, pitcherCats } = useCategories();
   const { statPrefs, daysBack } = useStatPrefs();
@@ -13,7 +16,9 @@ export function useSleeperAnalysis(playerType: "hitter" | "pitcher") {
     let cancelled = false;
     setLoading(true);
 
-    const categories = playerType === "hitter" ? hitterCats : pitcherCats;
+    const raw = playerType === "hitter" ? hitterCats : pitcherCats;
+    const defaults = playerType === "hitter" ? DEFAULT_HITTER_CATS : DEFAULT_PITCHER_CATS;
+    const categories = raw.length > 0 ? raw : defaults;
 
     void fetchAnalysis({
       leagueId,

@@ -19,7 +19,12 @@ const BATTER_DB_TO_METRIC: Record<string, string> = {
   ev_avg: "EV",
   sprint_speed: "Sprint Speed",
   k_pct: "K%",
-  bb_pct: "BB%"
+  bb_pct: "BB%",
+  ld_pct: "LD%",
+  gb_pct: "GB%",
+  whiff_pct: "Whiff%",
+  sb_pct: "SB%",
+  f_score: "F-Score"
 };
 
 // ---------------------------------------------------------------------------
@@ -38,7 +43,11 @@ const PITCHER_DB_TO_METRIC: Record<string, string> = {
   swstr_pct: "SwStr%",
   csw_pct: "CSW%",
   k_pct: "K%",
-  bb_pct: "BB%"
+  bb_pct: "BB%",
+  lob_pct: "LOB%",
+  gb_pct: "GB%",
+  hard_hit_pct: "HardHit%",
+  f_score: "F-Score"
 };
 
 export type DbPlayer = Record<string, unknown>;
@@ -65,8 +74,12 @@ export function mapDbPlayerToApi(
     rosterState: "waiver" as const,
     metrics,
     trend: [] as number[],
-    delta: 0,
-    recommendationScore: 0
+    // Batters: xwOBA − AVG (true talent vs current average)
+    // Pitchers: ERA − xERA (how inflated ERA is vs expected; positive = buy-low opportunity)
+    delta: columnMap === BATTER_DB_TO_METRIC
+      ? ((row.xwoba as number ?? 0) - (row.avg as number ?? 0))
+      : ((row.era as number ?? 0) - (row.xera as number ?? 0)),
+    recommendationScore: (row.f_score as number) ?? 0
   };
 }
 
@@ -104,7 +117,8 @@ export async function queryPlayersFromDb(
 ) {
   void rosterState; // statcast tables don't have roster_state; handled by Yahoo layer
 
-  const supabase = createServerSupabaseClient(process.env as Record<string, string | undefined>);
+  const env = typeof process !== "undefined" ? process.env : {};
+  const supabase = createServerSupabaseClient(env as Record<string, string | undefined>);
   if (!supabase) return null;
 
   const isHitter = query.playerType === "hitter";

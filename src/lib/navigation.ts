@@ -6,6 +6,8 @@ export const navItems: NavItem[] = [
   { label: "Matchup Analysis", path: "/matchup", section: "Fantasy HQ" },
   { label: "Trade Analyzer", path: "/trade", section: "Tools" },
   { label: "Stat Explorer", path: "/explorer", section: "Tools" },
+  { label: "Prospects News", path: "/news/prospects", section: "News" },
+  { label: "Injury Update", path: "/news/injury", section: "News" },
   { label: "Settings", path: "/settings", section: "Config" }
 ];
 

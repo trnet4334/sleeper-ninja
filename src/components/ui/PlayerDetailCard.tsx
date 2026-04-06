@@ -1,7 +1,8 @@
 import { StatChip } from "./StatChip";
 
 export function PlayerDetailCard({
-  player
+  player,
+  onClose,
 }: {
   player: {
     playerName: string;
@@ -11,6 +12,7 @@ export function PlayerDetailCard({
     trend: number[];
     metrics: Record<string, number | string>;
   } | null;
+  onClose?: () => void;
 }) {
   if (!player) {
     return null;
@@ -18,7 +20,21 @@ export function PlayerDetailCard({
 
   return (
     <div className="rounded-2xl border border-white/5 bg-surface-container-low p-5">
-      <p className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">Player Detail</p>
+      <div className="flex items-start justify-between">
+        <p className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">Player Detail</p>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="ml-4 flex h-7 w-7 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-on-surface"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+      </div>
       <h4 className="mt-3 font-headline text-2xl font-bold text-on-surface">{player.playerName}</h4>
       <p className="mt-1 text-sm text-on-surface-variant">
         {player.team} • {player.position}

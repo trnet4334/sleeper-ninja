@@ -27,6 +27,12 @@ create table if not exists statcast_batters (
   bb           int,
   k_pct        float,
   bb_pct       float,
+  -- F-score supplementary stats
+  ld_pct       float,
+  gb_pct       float,
+  whiff_pct    float,
+  sb_pct       float,
+  f_score      float,
   updated_at   timestamptz  default now()
 );
 
@@ -53,6 +59,11 @@ create table if not exists statcast_pitchers (
   w             int,
   sv            int,
   hld           int,
+  -- F-score supplementary stats
+  lob_pct       float,
+  gb_pct        float,
+  hard_hit_pct  float,
+  f_score       float,
   updated_at    timestamptz  default now()
 );
 
@@ -181,3 +192,20 @@ create table if not exists players (
 
 -- yahoo_tokens table removed in yahoo-oauth-cookie change
 -- tokens are now stored exclusively in browser httpOnly cookies
+
+-- ---------------------------------------------------------------------------
+-- Migrations: add new columns to existing tables (safe to re-run)
+-- ---------------------------------------------------------------------------
+
+alter table if exists statcast_batters
+  add column if not exists ld_pct    float,
+  add column if not exists gb_pct    float,
+  add column if not exists whiff_pct float,
+  add column if not exists sb_pct    float,
+  add column if not exists f_score   float;
+
+alter table if exists statcast_pitchers
+  add column if not exists lob_pct      float,
+  add column if not exists gb_pct       float,
+  add column if not exists hard_hit_pct float,
+  add column if not exists f_score      float;
