@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useCategories } from "@/hooks/useCategories";
 import { useMatchupAnalysis } from "@/hooks/useMatchupAnalysis";
 import { useRosterData } from "@/hooks/useRosterData";
+import { useYahooAuth } from "@/hooks/useYahooAuth";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { WinProbabilityRing } from "@/components/matchup/WinProbabilityRing";
 import { CategoryRow } from "@/components/matchup/CategoryRow";
 
 export function H2HMatchupPage() {
+  const { connected, loading: authLoading } = useYahooAuth();
   const [playerType, setPlayerType] = useState<"hitter" | "pitcher">("hitter");
   const [mode, setMode] = useState<"average" | "conservative" | "optimistic">("average");
   const data = useMatchupAnalysis(playerType, mode);
@@ -21,6 +23,27 @@ export function H2HMatchupPage() {
   // TODO: wire to real data when API exposes winProbability and insight
   const winProbability = (data as Record<string, unknown> | null)?.winProbability as number | undefined;
   const insight = (data as Record<string, unknown> | null)?.insight as string | undefined;
+
+  if (!connected && !authLoading) {
+    return (
+      <section className="flex min-h-[60vh] items-center justify-center">
+        <div className="max-w-sm rounded-xl bg-surface-container-low p-8 text-center">
+          <h1 className="font-headline text-2xl font-extrabold text-on-surface">
+            Matchup Analysis
+          </h1>
+          <p className="mt-3 text-sm text-on-surface-variant">
+            Connect your Yahoo Fantasy account to view your head-to-head matchup data.
+          </p>
+          <a
+            href="/api/yahoo/connect"
+            className="mt-6 block rounded-lg bg-amber-500 px-6 py-3 text-sm font-bold uppercase tracking-[0.15em] text-black transition-opacity hover:opacity-90"
+          >
+            Connect Yahoo Fantasy
+          </a>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-8">
