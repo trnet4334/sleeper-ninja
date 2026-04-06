@@ -1,8 +1,12 @@
+import { useYahooAuth } from "@/hooks/useYahooAuth";
 import { LeagueManager } from "@/components/settings/LeagueManager";
 import { CategoryManager } from "@/components/settings/CategoryManager";
 import { StatPreferencesPanel } from "@/components/settings/StatPreferences";
+import { YahooAccountPanel } from "@/components/settings/YahooAccountPanel";
 
 export function SettingsPage() {
+  const { connected, loading, disconnect } = useYahooAuth();
+
   return (
     <section className="space-y-8">
       <div>
@@ -17,7 +21,7 @@ export function SettingsPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-xl bg-surface-container-low p-6">
           <h2 className="mb-6 font-headline text-lg font-bold text-on-surface">Leagues</h2>
-          <LeagueManager />
+          <LeagueManager connected={connected} />
         </div>
 
         <div className="rounded-xl bg-surface-container-low p-6">
@@ -28,6 +32,17 @@ export function SettingsPage() {
         <div className="rounded-xl bg-surface-container-low p-6">
           <h2 className="mb-6 font-headline text-lg font-bold text-on-surface">Preferences</h2>
           <StatPreferencesPanel />
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-surface-container-low p-6">
+        <h2 className="mb-6 font-headline text-lg font-bold text-on-surface">Yahoo Account</h2>
+        <div className="max-w-sm">
+          <YahooAccountPanel
+            connected={connected}
+            loading={loading}
+            onDisconnect={disconnect}
+          />
         </div>
       </div>
     </section>
