@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export interface YahooAuthState {
   connected: boolean;
   loading: boolean;
+  disconnect: () => Promise<void>;
 }
 
 export function useYahooAuth(): YahooAuthState {
-  const [state, setState] = useState<YahooAuthState>({ connected: false, loading: true });
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -14,23 +16,39 @@ export function useYahooAuth(): YahooAuthState {
     async function load() {
       try {
         const response = await fetch("/api/yahoo/status");
-        const payload = (await response.json()) as { connected: boolean };
+        if (!response.ok) {
+          if (!cancelled) { setConnected(false); setLoading(false); }
+          return;
+        }
+        const raw = (await response.json()) as { connected?: unknown };
+        const isConnected = raw != null && typeof raw.connected === "boolean" ? raw.connected : false;
         if (!cancelled) {
-          setState({ connected: payload.connected, loading: false });
+          setConnected(isConnected);
+          setLoading(false);
         }
       } catch {
         if (!cancelled) {
-          setState({ connected: false, loading: false });
+          setConnected(false);
+          setLoading(false);
         }
       }
     }
 
     void load();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  return state;
+  const disconnect = useCallback(async () => {
+    try {
+      const response = await fetch("/api/yahoo/disconnect", { method: "POST" });
+      if (response.ok) {
+        setConnected(false);
+      }
+      // non-ok: intentional no-op — user can retry; spec says leave state unchanged
+    } catch {
+      // no-op: leave state unchanged
+    }
+  }, []);
+
+  return { connected, loading, disconnect };
 }
