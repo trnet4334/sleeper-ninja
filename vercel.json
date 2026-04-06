@@ -1,7 +1,7 @@
 {
-  "functions": {
-    "api/**/*.cjs": { "maxDuration": 10 }
-  },
+  "builds": [
+    { "src": "api/**/*.ts", "use": "@vercel/node" }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
