@@ -1,6 +1,6 @@
-export const config = { runtime: "edge" };
-
 import { clearCookieHeader } from "../_shared/yahoo.js";
+
+export const config = { runtime: "edge" };
 
 export function handler(): Response {
   return new Response(JSON.stringify({ status: "disconnected" }), {

@@ -1,6 +1,6 @@
-export const config = { runtime: "edge" };
-
 import { matchupSummaryAsync, ok, parseDataQuery } from "../_shared/data.js";
+
+export const config = { runtime: "edge" };
 
 export async function handler(request: Request = new Request("http://localhost/api/data/matchup")) {
   const query = parseDataQuery(request);

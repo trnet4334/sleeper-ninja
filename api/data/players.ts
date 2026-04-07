@@ -1,6 +1,6 @@
-export const config = { runtime: "edge" };
-
 import { ok, parseDataQuery, queryPlayersWithFallback } from "../_shared/data.js";
+
+export const config = { runtime: "edge" };
 
 export async function handler(request: Request = new Request("http://localhost/api/data/players")) {
   const query = parseDataQuery(request);

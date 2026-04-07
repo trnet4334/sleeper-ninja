@@ -1,6 +1,6 @@
-export const config = { runtime: "edge" };
-
 import { analysisSummaryAsync, ok, parseDataQuery } from "../_shared/data.js";
+
+export const config = { runtime: "edge" };
 
 export async function handler(request: Request = new Request("http://localhost/api/data/analysis")) {
   const query = parseDataQuery(request);

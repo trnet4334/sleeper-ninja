@@ -1,5 +1,3 @@
-export const config = { runtime: "edge" };
-
 import { json } from "../_shared/http.js";
 import {
   encryptToken,
@@ -10,6 +8,8 @@ import {
   toTokenRecord,
   type YahooOAuthExchangeResult
 } from "../_shared/yahoo.js";
+
+export const config = { runtime: "edge" };
 
 export interface LeagueResult {
   id: string;
@@ -104,9 +104,9 @@ async function fetchYahooLeagues(accessToken: string): Promise<LeagueResult[]> {
 }
 
 export async function handler(
-  request: Request,
-  env: Record<string, string | undefined> = process.env
+  request: Request
 ): Promise<Response> {
+  const env = process.env as Record<string, string | undefined>;
   const cookieSecret = env.COOKIE_SECRET ?? "";
   let token = await parseCookieToken(request.headers.get("Cookie"), cookieSecret);
   if (!token) {

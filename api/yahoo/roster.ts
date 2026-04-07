@@ -1,5 +1,3 @@
-export const config = { runtime: "edge" };
-
 import { json } from "../_shared/http.js";
 import {
   encryptToken,
@@ -10,6 +8,8 @@ import {
   toTokenRecord,
   type YahooOAuthExchangeResult
 } from "../_shared/yahoo.js";
+
+export const config = { runtime: "edge" };
 
 async function refreshYahooToken(
   refreshToken: string,
@@ -48,9 +48,9 @@ async function refreshYahooToken(
 }
 
 export async function handler(
-  request: Request,
-  env: Record<string, string | undefined> = process.env
+  request: Request
 ): Promise<Response> {
+  const env = process.env as Record<string, string | undefined>;
   const url = new URL(request.url);
   const leagueId = url.searchParams.get("league_id");
 

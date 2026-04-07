@@ -1,5 +1,3 @@
-export const config = { runtime: "edge" };
-
 import { json } from "../_shared/http.js";
 import {
   clearCookieHeader,
@@ -11,6 +9,8 @@ import {
   toTokenRecord,
   type YahooOAuthExchangeResult
 } from "../_shared/yahoo.js";
+
+export const config = { runtime: "edge" };
 
 async function refreshYahooToken(
   refreshToken: string,
@@ -51,9 +51,9 @@ async function refreshYahooToken(
 }
 
 export async function handler(
-  request: Request,
-  env: Record<string, string | undefined> = process.env
+  request: Request
 ): Promise<Response> {
+  const env = process.env as Record<string, string | undefined>;
   if (!hasYahooConfig(env)) {
     return json({ status: "missing_config" }, { status: 500 });
   }
