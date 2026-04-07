@@ -75,7 +75,13 @@ def fetch_rotowire_news() -> list[dict[str, object]]:
     """Fetch Rotowire RSS and parse into structured records."""
     try:
         import feedparser  # type: ignore[import-untyped]
-        feed = feedparser.parse(ROTOWIRE_RSS_URL)
+        feed = feedparser.parse(
+            ROTOWIRE_RSS_URL,
+            request_headers={"User-Agent": "Mozilla/5.0 (compatible; SleepNinja/1.0; +https://github.com)"},
+        )
+        if feed.get("status", 200) not in (200, 301, 302):
+            print(f"[news] rotowire HTTP {feed.get('status')} — skipping")
+            return []
     except Exception as exc:
         print(f"[news] rotowire fetch error: {exc}")
         return []
