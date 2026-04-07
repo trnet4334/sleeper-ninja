@@ -1,15 +1,54 @@
-import { useState } from "react";
-import { useRosterData } from "@/hooks/useRosterData";
+import { useEffect, useState } from "react";
 import { useLeagues } from "@/hooks/useLeagues";
+import { useYahooAuth } from "@/hooks/useYahooAuth";
+import { useYahooRoster } from "@/hooks/useYahooRoster";
+import type { YahooPlayer } from "@/hooks/useYahooRoster";
 import { RosterSummaryCard } from "@/components/roster/RosterSummaryCard";
 import { PlayerRow } from "@/components/roster/PlayerRow";
 import type { LeagueDefinition } from "@/types/league";
 
 const HITTER_COLS = ["AVG", "HR", "RBI", "SB"];
 const PITCHER_COLS = ["ERA", "WHIP", "K", "W-S"];
+const IL_POSITIONS = ["IL", "IL10", "IL60"];
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function yahooPlayerToRow(player: YahooPlayer) {
+  return {
+    id: `${player.playerName}-${player.team}`,
+    playerName: player.playerName,
+    team: player.team,
+    position: player.position.split(",")[0].trim(),
+    playerType: "hitter" as const,
+    rosterState: "roster" as const,
+    metrics: {} as Record<string, number | string>,
+    trend: [],
+    delta: 0,
+    recommendationScore: 0
+  };
+}
+
+function SkeletonRow({ cols }: { cols: string[] }) {
+  return (
+    <tr className="animate-pulse">
+      <td className="py-2 pr-4">
+        <span className="block h-4 w-8 rounded bg-surface-container-high" />
+      </td>
+      <td className="py-2 pr-6">
+        <span className="block h-4 w-32 rounded bg-surface-container-high" />
+      </td>
+      {cols.map((col) => (
+        <td key={col} className="py-2 pr-4">
+          <span className="block h-4 w-10 rounded bg-surface-container-high" />
+        </td>
+      ))}
+      <td className="py-2">
+        <span className="block h-4 w-12 rounded bg-surface-container-high" />
+      </td>
+    </tr>
+  );
 }
 
 function AddLeagueForm({ onAdd }: { onAdd: (league: LeagueDefinition) => void }) {
@@ -75,40 +114,51 @@ function TableSection({
   label,
   statCols,
   children,
-  empty
+  empty,
+  loading
 }: {
   label: string;
   statCols: string[];
   children: React.ReactNode;
   empty: boolean;
+  loading?: boolean;
 }) {
   return (
     <section className="space-y-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">{label}</p>
-      {empty ? (
+      {loading ? (
+        <div className="overflow-x-auto rounded-2xl border border-white/5 bg-surface-container-low">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="py-3 pr-4 pl-5 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Pos</th>
+                <th className="py-3 pr-6 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Player</th>
+                {statCols.map((col) => (
+                  <th key={col} className="py-3 pr-4 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">{col}</th>
+                ))}
+                <th className="py-3 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Status</th>
+              </tr>
+            </thead>
+            <tbody className="[&>tr]:border-b [&>tr]:border-white/5 [&>tr:last-child]:border-0 [&>tr]:pl-5">
+              <SkeletonRow cols={statCols} />
+              <SkeletonRow cols={statCols} />
+              <SkeletonRow cols={statCols} />
+            </tbody>
+          </table>
+        </div>
+      ) : empty ? (
         <p className="text-sm text-on-surface-variant">No players on roster.</p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-white/5 bg-surface-container-low">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-white/5">
-                <th className="py-3 pr-4 pl-5 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-                  Pos
-                </th>
-                <th className="py-3 pr-6 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-                  Player
-                </th>
+                <th className="py-3 pr-4 pl-5 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Pos</th>
+                <th className="py-3 pr-6 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Player</th>
                 {statCols.map((col) => (
-                  <th
-                    key={col}
-                    className="py-3 pr-4 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant"
-                  >
-                    {col}
-                  </th>
+                  <th key={col} className="py-3 pr-4 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">{col}</th>
                 ))}
-                <th className="py-3 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">
-                  Status
-                </th>
+                <th className="py-3 text-[10px] font-bold uppercase tracking-[0.22em] text-on-surface-variant">Status</th>
               </tr>
             </thead>
             <tbody className="[&>tr]:border-b [&>tr]:border-white/5 [&>tr:last-child]:border-0 [&>tr]:pl-5">
@@ -121,28 +171,37 @@ function TableSection({
   );
 }
 
-function RosterContent() {
-  const { players: hitters } = useRosterData("hitter");
-  const { players: pitchers } = useRosterData("pitcher");
+function RosterContent({ activeYahooLeagueId }: { activeYahooLeagueId: string }) {
+  const { hitters, pitchers, loading } = useYahooRoster(activeYahooLeagueId);
 
   return (
     <section className="space-y-8">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <RosterSummaryCard label="Roster Health" value="92%" accent />
-        <RosterSummaryCard label="Active Grid" value="12/12" accent />
-        <RosterSummaryCard label="Waiver Priority" value="#4" />
-        <RosterSummaryCard label="FAAB" value="$72" />
+        <RosterSummaryCard label="Roster Health" value="—" accent />
+        <RosterSummaryCard label="Active Grid" value="—" accent />
+        <RosterSummaryCard label="Waiver Priority" value="—" />
+        <RosterSummaryCard label="FAAB" value="—" />
       </div>
 
-      <TableSection label="Hitters" statCols={HITTER_COLS} empty={hitters.length === 0}>
+      <TableSection label="Hitters" statCols={HITTER_COLS} empty={!loading && hitters.length === 0} loading={loading}>
         {hitters.map((player) => (
-          <PlayerRow key={player.id} player={player} columns={HITTER_COLS} />
+          <PlayerRow
+            key={`${player.playerName}-${player.team}`}
+            player={yahooPlayerToRow(player)}
+            columns={HITTER_COLS}
+            il={IL_POSITIONS.includes(player.selectedPosition)}
+          />
         ))}
       </TableSection>
 
-      <TableSection label="Pitchers" statCols={PITCHER_COLS} empty={pitchers.length === 0}>
+      <TableSection label="Pitchers" statCols={PITCHER_COLS} empty={!loading && pitchers.length === 0} loading={loading}>
         {pitchers.map((player) => (
-          <PlayerRow key={player.id} player={player} columns={PITCHER_COLS} />
+          <PlayerRow
+            key={`${player.playerName}-${player.team}`}
+            player={yahooPlayerToRow(player)}
+            columns={PITCHER_COLS}
+            il={IL_POSITIONS.includes(player.selectedPosition)}
+          />
         ))}
       </TableSection>
     </section>
@@ -150,7 +209,42 @@ function RosterContent() {
 }
 
 export function MyRosterPage() {
-  const { leagues, addLeague } = useLeagues();
+  const { leagues, activeLeague, addLeague } = useLeagues();
+  const { connected, loading: authLoading } = useYahooAuth();
+  const [autoImporting, setAutoImporting] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !connected || leagues.length > 0 || autoImporting) return;
+
+    let cancelled = false;
+    setAutoImporting(true);
+
+    async function importLeagues() {
+      try {
+        const response = await fetch("/api/yahoo/leagues");
+        if (!response.ok || cancelled) return;
+        const payload = (await response.json()) as { leagues: Array<{ id: string; name: string; yahooLeagueId: string; season: number }> };
+        if (!cancelled) {
+          (payload.leagues ?? []).forEach((league) => addLeague(league));
+        }
+      } finally {
+        if (!cancelled) setAutoImporting(false);
+      }
+    }
+
+    void importLeagues();
+    return () => { cancelled = true; };
+  }, [authLoading, connected, leagues.length, addLeague, autoImporting]);
+
+  const isLoading = authLoading || autoImporting;
+
+  if (isLoading) {
+    return (
+      <section className="flex flex-col items-center justify-center py-16">
+        <p className="text-sm text-on-surface-variant animate-pulse">Loading leagues…</p>
+      </section>
+    );
+  }
 
   if (leagues.length === 0) {
     return (
@@ -160,5 +254,5 @@ export function MyRosterPage() {
     );
   }
 
-  return <RosterContent />;
+  return <RosterContent activeYahooLeagueId={activeLeague?.yahooLeagueId ?? ""} />;
 }
