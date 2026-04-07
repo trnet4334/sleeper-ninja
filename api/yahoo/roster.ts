@@ -322,10 +322,19 @@ export async function handler(request: Request): Promise<Response> {
   }
 
   const cookieSecret = env.COOKIE_SECRET ?? "";
-  let token = await parseCookieToken(request.headers.get("Cookie"), cookieSecret);
+  const rawCookie = request.headers.get("Cookie");
+  console.log("[debug] hasCookie:", !!rawCookie);
+  console.log("[debug] cookieSecretSet:", cookieSecret.length > 0);
+  console.log("[debug] cookieNames:", rawCookie?.split(";").map(c => c.trim().split("=")[0]));
+
+  let token = await parseCookieToken(rawCookie, cookieSecret);
+  console.log("[debug] tokenParsed:", !!token);
+
   if (!token) {
-    return json({ status: "unauthorized" }, { status: 401 });
+    return json({ status: "unauthorized", debug: "parseCookieToken returned null" }, { status: 401 });
   }
+
+  console.log("[debug] tokenExpired:", isTokenExpired(token));
 
   if (isTokenExpired(token)) {
     try {
@@ -335,14 +344,16 @@ export async function handler(request: Request): Promise<Response> {
       return buildRosterResponse(token.accessToken, leagueId, {
         "Set-Cookie": setCookieHeader(encrypted)
       });
-    } catch {
-      return json({ status: "unauthorized" }, { status: 401 });
+    } catch (e) {
+      console.log("[debug] refreshFailed:", String(e));
+      return json({ status: "unauthorized", debug: "refresh failed" }, { status: 401 });
     }
   }
 
   try {
     return buildRosterResponse(token.accessToken, leagueId);
-  } catch {
+  } catch (e) {
+    console.log("[debug] buildRosterFailed:", String(e));
     return json({ status: "fetch_failed" }, { status: 502 });
   }
 }
