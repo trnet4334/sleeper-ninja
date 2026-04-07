@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLeagues } from "@/hooks/useLeagues";
 import { useYahooAuth } from "@/hooks/useYahooAuth";
 import { useYahooRoster } from "@/hooks/useYahooRoster";
@@ -212,10 +212,12 @@ export function MyRosterPage() {
   const { leagues, activeLeague, addLeague } = useLeagues();
   const { connected, loading: authLoading } = useYahooAuth();
   const [autoImporting, setAutoImporting] = useState(false);
+  const importAttempted = useRef(false);
 
   useEffect(() => {
-    if (authLoading || !connected || leagues.length > 0 || autoImporting) return;
+    if (authLoading || !connected || leagues.length > 0 || importAttempted.current) return;
 
+    importAttempted.current = true;
     let cancelled = false;
     setAutoImporting(true);
 
@@ -234,7 +236,7 @@ export function MyRosterPage() {
 
     void importLeagues();
     return () => { cancelled = true; };
-  }, [authLoading, connected, leagues.length, addLeague, autoImporting]);
+  }, [authLoading, connected, leagues.length, addLeague]);
 
   const isLoading = authLoading || autoImporting;
 
