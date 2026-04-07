@@ -47,7 +47,8 @@ export function parseYahooRoster(data: unknown): YahooPlayer[] {
     if (!Array.isArray(teamArr) || teamArr.length < 2) return [];
 
     const rosterObj = (teamArr[1] as Record<string, unknown>)?.roster;
-    const playersObj = (rosterObj as Record<string, unknown>)?.players;
+    const rosterInner = (rosterObj as Record<string, unknown>)?.["0"];
+    const playersObj = (rosterInner as Record<string, unknown>)?.players;
     if (!playersObj || typeof playersObj !== "object") return [];
 
     const count = Number((playersObj as Record<string, unknown>)?.count ?? 0);
@@ -284,24 +285,18 @@ async function buildRosterResponse(
   const teamUrl = `https://fantasysports.yahooapis.com/fantasy/v2/league/${leagueKey}/teams;use_login=1?format=json`;
   const teamResp = await fetch(teamUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
   const teamRaw = await teamResp.json();
-  console.log("[debug] teamUrl status:", teamResp.status);
-  console.log("[debug] teamRaw:", JSON.stringify(teamRaw));
 
   const teamKey = parseTeamKey(teamRaw);
-  console.log("[debug] teamKeyExtracted:", teamKey);
 
   if (!teamKey) {
-    return json({ status: "no_team", debug: { teamStatus: teamResp.status, teamRaw } }, { status: 404 });
+    return json({ status: "no_team" }, { status: 404 });
   }
 
   const rosterUrl = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster?format=json`;
   const rosterResp = await fetch(rosterUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
   const rosterRaw = await rosterResp.json();
-  console.log("[debug] rosterUrl status:", rosterResp.status);
-  console.log("[debug] rosterRaw:", JSON.stringify(rosterRaw));
 
   const players = parseYahooRoster(rosterRaw);
-  console.log("[debug] parsedPlayers count:", players.length);
 
   // Fetch season stats and merge
   const withStats = await fetchStats(accessToken, players);
@@ -323,18 +318,12 @@ export async function handler(request: Request): Promise<Response> {
 
   const cookieSecret = env.COOKIE_SECRET ?? "";
   const rawCookie = request.headers.get("Cookie");
-  console.log("[debug] hasCookie:", !!rawCookie);
-  console.log("[debug] cookieSecretSet:", cookieSecret.length > 0);
-  console.log("[debug] cookieNames:", rawCookie?.split(";").map(c => c.trim().split("=")[0]));
 
   let token = await parseCookieToken(rawCookie, cookieSecret);
-  console.log("[debug] tokenParsed:", !!token);
 
   if (!token) {
-    return json({ status: "unauthorized", debug: "parseCookieToken returned null" }, { status: 401 });
+    return json({ status: "unauthorized" }, { status: 401 });
   }
-
-  console.log("[debug] tokenExpired:", isTokenExpired(token));
 
   if (isTokenExpired(token)) {
     try {
@@ -344,16 +333,14 @@ export async function handler(request: Request): Promise<Response> {
       return buildRosterResponse(token.accessToken, leagueId, {
         "Set-Cookie": setCookieHeader(encrypted)
       });
-    } catch (e) {
-      console.log("[debug] refreshFailed:", String(e));
-      return json({ status: "unauthorized", debug: "refresh failed" }, { status: 401 });
+    } catch {
+      return json({ status: "unauthorized" }, { status: 401 });
     }
   }
 
   try {
     return buildRosterResponse(token.accessToken, leagueId);
-  } catch (e) {
-    console.log("[debug] buildRosterFailed:", String(e));
+  } catch {
     return json({ status: "fetch_failed" }, { status: 502 });
   }
 }
