@@ -1,6 +1,13 @@
 // TEMPORARY DEBUG ENDPOINT — remove after diagnosing roster issue
 import { json } from "../_shared/http.js";
-import { isTokenExpired, parseCookieToken } from "../_shared/yahoo.js";
+import {
+  encryptToken,
+  isTokenExpired,
+  parseCookieToken,
+  readYahooEnv,
+  setCookieHeader,
+  toTokenRecord
+} from "../_shared/yahoo.js";
 
 export const config = { runtime: "edge" };
 
@@ -12,9 +19,29 @@ export async function handler(request: Request): Promise<Response> {
   if (!leagueId) return json({ error: "missing league_id" }, { status: 400 });
 
   const cookieSecret = env.COOKIE_SECRET ?? "";
-  const token = await parseCookieToken(request.headers.get("Cookie"), cookieSecret);
-  if (!token) return json({ error: "unauthorized" }, { status: 401 });
-  if (isTokenExpired(token)) return json({ error: "token_expired" }, { status: 401 });
+  let token = await parseCookieToken(request.headers.get("Cookie"), cookieSecret);
+  if (!token) return json({ error: "no_cookie — make sure you are logged in via /api/yahoo/connect" }, { status: 401 });
+
+  // Refresh if expired
+  let refreshedCookie: string | undefined;
+  if (isTokenExpired(token)) {
+    try {
+      const cfg = readYahooEnv(env);
+      const credentials = btoa(`${cfg.clientId}:${cfg.clientSecret}`);
+      const refreshResp = await fetch("https://api.login.yahoo.com/oauth2/get_token", {
+        method: "POST",
+        headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: token.refreshToken }).toString()
+      });
+      if (!refreshResp.ok) return json({ error: "token_expired_and_refresh_failed", status: refreshResp.status }, { status: 401 });
+      const refreshData = (await refreshResp.json()) as { access_token: string; refresh_token: string; expires_in: number };
+      token = toTokenRecord({ accessToken: refreshData.access_token, refreshToken: refreshData.refresh_token, expiresIn: refreshData.expires_in });
+      const encrypted = await encryptToken(token, cookieSecret);
+      refreshedCookie = setCookieHeader(encrypted);
+    } catch (e) {
+      return json({ error: "refresh_exception", detail: String(e) }, { status: 401 });
+    }
+  }
 
   const leagueKey = `mlb.l.${leagueId}`;
   const headers = { Authorization: `Bearer ${token.accessToken}` };
@@ -24,7 +51,7 @@ export async function handler(request: Request): Promise<Response> {
   const teamResp = await fetch(teamUrl, { headers });
   const teamRaw = await teamResp.json();
 
-  // Try to extract team key from the response
+  // Try to extract team key
   let teamKey: string | null = null;
   try {
     const fc = (teamRaw as Record<string, unknown>)?.fantasy_content;
@@ -56,13 +83,23 @@ export async function handler(request: Request): Promise<Response> {
     rosterRaw = await rosterResp.json();
   }
 
-  return json({
+  const responseBody = JSON.stringify({
+    tokenWasExpired: isTokenExpired(token),
+    tokenRefreshed: !!refreshedCookie,
     leagueKey,
     teamUrl,
     teamStatus: teamResp.status,
     teamRaw,
     teamKeyExtracted: teamKey,
     rosterRaw
+  });
+
+  return new Response(responseBody, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      ...(refreshedCookie ? { "Set-Cookie": refreshedCookie } : {})
+    }
   });
 }
 
