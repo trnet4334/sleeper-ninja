@@ -7,7 +7,7 @@ const DEFAULT_HITTER_CATS = ["HR", "SB", "AVG", "OBP", "BB", "TB"];
 const DEFAULT_PITCHER_CATS = ["ERA", "WHIP", "K", "SV", "QS", "W"];
 
 export function useSleeperAnalysis(playerType: "hitter" | "pitcher") {
-  const { leagueId, hitterCats, pitcherCats } = useCategories();
+  const { hitterCats, pitcherCats } = useCategories();
   const { statPrefs, daysBack } = useStatPrefs();
   const [data, setData] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,6 @@ export function useSleeperAnalysis(playerType: "hitter" | "pitcher") {
     const categories = raw.length > 0 ? raw : defaults;
 
     void fetchAnalysis({
-      leagueId,
       playerType,
       cats: categories.join(","),
       stats: statPrefs.join(","),
@@ -36,7 +35,7 @@ export function useSleeperAnalysis(playerType: "hitter" | "pitcher") {
     return () => {
       cancelled = true;
     };
-  }, [daysBack, hitterCats, leagueId, pitcherCats, playerType, statPrefs]);
+  }, [daysBack, hitterCats, pitcherCats, playerType, statPrefs]);
 
   return { data, loading };
 }
