@@ -51,7 +51,7 @@ from datetime import date, timedelta
 
 from scripts.utils.db import write_rows
 
-ROTOWIRE_RSS_URL = "https://www.rotowire.com/baseball/rss-news.xml"
+ROTOWIRE_RSS_URL = "https://www.rotowire.com/rss/news.php?sport=MLB"
 MLB_TRANSACTIONS_URL = "https://statsapi.mlb.com/api/v1/transactions"
 
 NEWS_CATEGORIES: dict[str, list[str]] = {
