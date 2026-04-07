@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts import adp, backfill, fangraphs, mlb_stats, savant, scoring
+from scripts import adp, backfill, fangraphs, mlb_stats, news, savant, scoring
 
 
 SOURCES = {
@@ -17,6 +17,7 @@ SOURCES = {
     "mlb_stats": mlb_stats.run,
     "fangraphs": fangraphs.run,
     "adp": adp.run,
+    "news": news.run,
     "backfill": backfill.run,
     "scoring": scoring.run,
 }
@@ -29,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-DATA_SOURCES = ["savant", "mlb_stats", "fangraphs", "adp", "backfill"]
+DATA_SOURCES = ["savant", "mlb_stats", "fangraphs", "adp", "news", "backfill"]
 
 
 def main() -> None:
@@ -44,7 +45,11 @@ def main() -> None:
     summary: dict[str, object] = {"days": args.days, "sources": []}
 
     for source_name in selected:
-        result = SOURCES[source_name](days=args.days)
+        try:
+            result = SOURCES[source_name](days=args.days)
+        except Exception as exc:  # noqa: BLE001
+            result = {"source": source_name, "error": str(exc)}
+            print(f"[{source_name}] error: {exc}", file=sys.stderr)
         summary["sources"].append(result)  # type: ignore[union-attr]
 
     # Always recompute F-scores after any data update
