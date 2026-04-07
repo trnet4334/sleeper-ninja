@@ -193,18 +193,75 @@ async function fetchUserTeamKey(
   return parseTeamKey(data);
 }
 
+function parsePlayerStats(data: unknown): Record<string, Record<string, string>> {
+  // Returns map of playerKey → { statName: value }
+  const result: Record<string, Record<string, string>> = {};
+  try {
+    const fc = (data as Record<string, unknown>)?.fantasy_content;
+    const players = (fc as Record<string, unknown>)?.players;
+    if (!players || typeof players !== "object") return result;
+
+    const count = Number((players as Record<string, unknown>)?.count ?? 0);
+    for (let i = 0; i < count; i++) {
+      const entry = (players as Record<string, unknown>)[String(i)];
+      const playerArr = (entry as Record<string, unknown>)?.player;
+      if (!Array.isArray(playerArr) || playerArr.length < 2) continue;
+
+      const metaList = playerArr[0] as Record<string, unknown>[];
+      let playerKey = "";
+      if (Array.isArray(metaList)) {
+        for (const meta of metaList) {
+          if (typeof meta.player_key === "string") { playerKey = meta.player_key; break; }
+        }
+      }
+      if (!playerKey) continue;
+
+      const playerData = playerArr[1] as Record<string, unknown>;
+      const playerStats = playerData?.player_stats as Record<string, unknown>;
+      const statList = playerStats?.stats as Record<string, unknown>[];
+      if (!Array.isArray(statList)) continue;
+
+      const stats: Record<string, string> = {};
+      for (const item of statList) {
+        const s = item.stat as Record<string, string>;
+        if (s?.stat_id && s.value !== undefined && s.value !== "-") {
+          const name = MLB_STAT_NAMES[s.stat_id];
+          if (name) stats[name] = s.value;
+        }
+      }
+      result[playerKey] = stats;
+    }
+  } catch { /* return partial result */ }
+  return result;
+}
+
 async function fetchYahooRoster(
   accessToken: string,
   teamKey: string
 ): Promise<YahooPlayer[]> {
+  // Call 1: basic roster — known stable structure with selected_position
+  const rosterUrl = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster?format=json`;
+  const rosterResp = await fetch(rosterUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!rosterResp.ok) throw new Error(`Yahoo roster fetch failed: ${rosterResp.status}`);
+  const rosterData = await rosterResp.json();
+  const players = parseYahooRoster(rosterData);
+
+  if (players.length === 0) return players;
+
+  // Call 2: season stats for these players, merged by playerKey
   const season = new Date().getFullYear();
-  const url = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster/players/stats;type=season;season=${season}?format=json`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` }
-  });
-  if (!response.ok) throw new Error(`Yahoo roster fetch failed: ${response.status}`);
-  const data = await response.json();
-  return parseYahooRoster(data);
+  const keys = players.map((p) => p.playerKey).filter(Boolean).join(",");
+  const statsUrl = `https://fantasysports.yahooapis.com/fantasy/v2/players;player_keys=${keys}/stats;type=season;season=${season}?format=json`;
+  try {
+    const statsResp = await fetch(statsUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (statsResp.ok) {
+      const statsData = await statsResp.json();
+      const statsMap = parsePlayerStats(statsData);
+      return players.map((p) => ({ ...p, stats: statsMap[p.playerKey] ?? {} }));
+    }
+  } catch { /* stats fetch failed — return roster without stats */ }
+
+  return players;
 }
 
 async function refreshYahooToken(
