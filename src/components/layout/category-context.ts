@@ -4,8 +4,8 @@ import type { LeagueDefinition } from "@/types/league";
 
 export interface CategoryContextValue {
   leagues: LeagueDefinition[];
-  activeLeague: LeagueDefinition;
-  activeLeagueId: string;
+  activeLeague: LeagueDefinition | null;
+  activeLeagueId: string | null;
   activeCategories: CategorySet;
   activeStatPrefs: StatPreferences;
   setActiveLeague: (leagueId: string) => void;

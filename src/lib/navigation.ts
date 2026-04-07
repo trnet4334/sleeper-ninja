@@ -11,8 +11,6 @@ export const navItems: NavItem[] = [
   { label: "Settings", path: "/settings", section: "Config" }
 ];
 
-export const leagueDefaults = [
-  { id: "viva_el_birdos", name: "Viva el Birdos", yahooLeagueId: "12345", season: 2025 },
-  { id: "lets_go_fans", name: "Lets Go Fans", yahooLeagueId: "23456", season: 2025 },
-  { id: "league_3", name: "League 3", yahooLeagueId: "34567", season: 2025 }
-];
+import type { LeagueDefinition } from "@/types/league";
+
+export const leagueDefaults: LeagueDefinition[] = [];

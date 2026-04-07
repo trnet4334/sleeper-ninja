@@ -28,28 +28,28 @@ import type { CategoryContextValue } from "./category-context";
 
 export function CategoryProvider({ children }: { children: ReactNode }) {
   const [leagues, setLeagueState] = useState<LeagueDefinition[]>(() => getLeagues(leagueDefaults));
-  const [activeLeagueId, setActiveLeagueId] = useState(() => getActiveLeague(leagueDefaults[0].id));
+  const [activeLeagueId, setActiveLeagueId] = useState<string | null>(() => getActiveLeague("") || null);
   const [categoryMapState, setCategoryMapState] = useState(() => getCategoryMap(defaultCategoryMap));
   const [statPrefsState, setStatPrefsState] = useState(() => getStatPrefs(defaultStatPreferences));
 
   const activeLeague = useMemo(
-    () => leagues.find((league) => league.id === activeLeagueId) ?? leagues[0],
+    () => leagues.find((league) => league.id === activeLeagueId) ?? (leagues[0] ?? null),
     [activeLeagueId, leagues]
   );
 
   const activeCategories = useMemo(
-    () => categoryMapState[activeLeague.id] ?? { hitter: [], pitcher: [] },
-    [activeLeague.id, categoryMapState]
+    () => (activeLeague ? categoryMapState[activeLeague.id] : undefined) ?? { hitter: [], pitcher: [] },
+    [activeLeague, categoryMapState]
   );
   const activeStatPrefs = useMemo(
-    () => statPrefsState[activeLeague.id] ?? { advanced: [], daysBack: 14 },
-    [activeLeague.id, statPrefsState]
+    () => (activeLeague ? statPrefsState[activeLeague.id] : undefined) ?? { advanced: [], daysBack: 14 },
+    [activeLeague, statPrefsState]
   );
 
   const handleSetActiveLeague = useCallback((leagueId: string) => {
     setActiveLeagueId(leagueId);
     setActiveLeague(leagueId);
-  }, []);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddLeague = useCallback((league: LeagueDefinition) => {
     const nextLeagues = upsertLeague(leagues, league);
@@ -73,29 +73,29 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
 
   const handleRemoveLeague = useCallback((leagueId: string) => {
     const nextLeagues = removeLeague(leagues, leagueId);
-    if (nextLeagues.length === 0) {
-      return;
-    }
-
     setLeagueState(nextLeagues);
     setLeagues(nextLeagues);
 
     if (activeLeagueId === leagueId) {
-      handleSetActiveLeague(nextLeagues[0].id);
+      const nextActive = nextLeagues[0]?.id ?? null;
+      setActiveLeagueId(nextActive);
+      if (nextActive) setActiveLeague(nextActive);
     }
-  }, [activeLeagueId, handleSetActiveLeague, leagues]);
+  }, [activeLeagueId, leagues]);
 
   const handleSetCategories = useCallback((categories: CategorySet) => {
+    if (!activeLeague) return;
     const nextMap = updateCategorySet(categoryMapState, activeLeague.id, categories);
     setCategoryMapState(nextMap);
     setCategoryMap(nextMap);
-  }, [activeLeague.id, categoryMapState]);
+  }, [activeLeague, categoryMapState]);
 
   const handleSetStatPrefs = useCallback((preferences: StatPreferences) => {
+    if (!activeLeague) return;
     const nextPrefs = updateStatPreference(statPrefsState, activeLeague.id, preferences);
     setStatPrefsState(nextPrefs);
     setStatPrefs(nextPrefs);
-  }, [activeLeague.id, statPrefsState]);
+  }, [activeLeague, statPrefsState]);
 
   const value = useMemo<CategoryContextValue>(
     () => ({
