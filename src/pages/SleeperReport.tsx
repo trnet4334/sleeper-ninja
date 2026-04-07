@@ -53,6 +53,8 @@ export function SleeperReportPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [sortKey, setSortKey] = useState<string>("recommendationScore");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 25;
 
   const categories = tab === "hitter" ? hitterCats : pitcherCats;
 
@@ -96,7 +98,14 @@ export function SleeperReportPage() {
       setSortKey(key);
       setSortDir("desc");
     }
+    setPage(0);
   };
+
+  // Reset page when tab changes
+  useEffect(() => { setPage(0); }, [tab]);
+
+  const pageCount = Math.ceil(players.length / PAGE_SIZE);
+  const pagedPlayers = players.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const activePlayer = players.find((p) => p.id === selectedPlayerId) ?? null;
 
@@ -255,7 +264,7 @@ export function SleeperReportPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {players.map((player) => (
+              {pagedPlayers.map((player) => (
                 <tr
                   key={player.id}
                   tabIndex={0}
@@ -302,6 +311,34 @@ export function SleeperReportPage() {
             </tbody>
           </table>
         </div>
+        {pageCount > 1 && (
+          <div className="flex items-center justify-between border-t border-white/5 px-6 py-3">
+            <span className="text-[11px] text-on-surface-variant">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, players.length)} of {players.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+                className="rounded-md border border-white/10 px-3 py-1 text-[11px] font-medium text-on-surface-variant transition-colors hover:border-white/20 hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              <span className="text-[11px] text-on-surface-variant">
+                {page + 1} / {pageCount}
+              </span>
+              <button
+                type="button"
+                disabled={page >= pageCount - 1}
+                onClick={() => setPage((p) => p + 1)}
+                className="rounded-md border border-white/10 px-3 py-1 text-[11px] font-medium text-on-surface-variant transition-colors hover:border-white/20 hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {modalOpen && activePlayer && (
