@@ -1,6 +1,5 @@
-import { webcrypto as nodeCrypto } from "node:crypto";
-// Use globalThis.crypto (Node 18.7+) with fallback to node:crypto webcrypto
-const webCrypto: Crypto = (globalThis.crypto ?? nodeCrypto) as unknown as Crypto;
+// Edge Runtime has globalThis.crypto natively; use it directly
+const webCrypto: Crypto = globalThis.crypto;
 
 // ---------------------------------------------------------------------------
 // Yahoo OAuth token record

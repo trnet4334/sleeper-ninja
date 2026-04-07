@@ -1,3 +1,5 @@
+export const config = { runtime: "edge" };
+
 import { clearCookieHeader } from "../_shared/yahoo.js";
 
 export function handler(): Response {

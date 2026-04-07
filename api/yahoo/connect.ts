@@ -1,3 +1,5 @@
+export const config = { runtime: "edge" };
+
 import { json } from "../_shared/http.js";
 import { buildYahooAuthUrl, hasYahooConfig } from "../_shared/yahoo.js";
 
