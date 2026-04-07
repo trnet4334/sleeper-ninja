@@ -14,7 +14,7 @@ function Probe() {
 
   return (
     <div>
-      <p>{activeLeague.name}</p>
+      <p>{activeLeague?.name}</p>
       <p>{activeCategories.hitter.join(",")}</p>
       <p>{activeStatPrefs.daysBack}</p>
       <button type="button" onClick={() => setActiveLeague("lets_go_fans")}>

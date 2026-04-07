@@ -4,7 +4,7 @@ export function useCategories() {
   const { activeLeague, activeCategories, setCategories, relatedStats } = useCategoryContext();
 
   return {
-    leagueId: activeLeague.id,
+    leagueId: activeLeague?.id ?? "",
     hitterCats: activeCategories.hitter,
     pitcherCats: activeCategories.pitcher,
     setCategories,
