@@ -71,6 +71,16 @@ function serverSupabase() {
 // Supabase queries
 // ---------------------------------------------------------------------------
 
+function deriveCategoryFromTypeCode(typeCode: string, typeDesc: string): NewsItem["category"] {
+  const code = typeCode.toUpperCase();
+  const desc = typeDesc.toLowerCase();
+  if (code === "RECALL" || desc.includes("recalled")) return "recalled";
+  if (code === "OPTION" || desc.includes("optioned")) return "optioned";
+  if (desc.includes("debut") || desc.includes("first")) return "debut";
+  if (desc.includes("promot")) return "promoted";
+  return "other";
+}
+
 async function fetchProspectsFromDb(
   days: number,
   cats: string[]
@@ -79,19 +89,29 @@ async function fetchProspectsFromDb(
   if (!supabase) return null;
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const sinceDateOnly = since.slice(0, 10);
   const prospectCats = cats.length > 0 ? cats : ["prospect", "recalled", "promoted", "optioned", "debut"];
 
-  const { data, error } = await supabase
+  // Query Rotowire RSS news
+  const { data: newsData, error: newsError } = await supabase
     .from("player_news")
     .select("*")
     .gte("published_at", since)
     .overlaps("categories", prospectCats)
     .order("published_at", { ascending: false });
 
-  if (error || !data) return null;
+  // Query MLB Transactions (recalls, options, DFAs)
+  const { data: txnData, error: txnError } = await supabase
+    .from("player_transactions")
+    .select("*")
+    .gte("date", sinceDateOnly)
+    .overlaps("categories", ["prospect"])
+    .order("date", { ascending: false });
 
-  return data.map((row: Record<string, unknown>) => ({
-    id: String(row.id ?? ""),
+  if (newsError && txnError) return null;
+
+  const fromNews: NewsItem[] = (newsData ?? []).map((row: Record<string, unknown>) => ({
+    id: `news-${String(row.id ?? "")}`,
     source: (row.source ?? "rotowire") as NewsItem["source"],
     playerName: String(row.player_name ?? ""),
     team: String(row.team ?? ""),
@@ -101,6 +121,22 @@ async function fetchProspectsFromDb(
     publishedAt: String(row.published_at ?? ""),
     link: row.link ? String(row.link) : undefined,
   }));
+
+  const fromTxn: NewsItem[] = (txnData ?? []).map((row: Record<string, unknown>) => ({
+    id: `txn-${String(row.id ?? "")}`,
+    source: "mlb_api" as NewsItem["source"],
+    playerName: String(row.player_name ?? ""),
+    team: String(row.team ?? ""),
+    category: deriveCategoryFromTypeCode(String(row.type_code ?? ""), String(row.type_desc ?? "")),
+    title: String(row.type_desc ?? ""),
+    summary: String(row.description ?? ""),
+    publishedAt: String(row.date ?? ""),
+    link: undefined,
+  }));
+
+  return [...fromNews, ...fromTxn].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt)
+  );
 }
 
 async function fetchInjuriesFromDb(
@@ -146,37 +182,66 @@ async function fetchInjuriesFromDb(
 // ---------------------------------------------------------------------------
 
 async function fetchProspectsFromFile(days: number): Promise<NewsItem[] | null> {
+  const baseUrl =
+    typeof window !== "undefined" ? "" : "http://localhost:3001";
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+  const sinceDateOnly = new Date(since).toISOString().slice(0, 10);
+  const prospectCats = ["prospect", "recalled", "promoted", "optioned", "debut"];
+
+  let fromNews: NewsItem[] = [];
+  let fromTxn: NewsItem[] = [];
+
   try {
-    const baseUrl =
-      typeof window !== "undefined" ? "" : "http://localhost:3001";
     const res = await fetch(`${baseUrl}/exports/player_news.json`);
-    if (!res.ok) return null;
-    const rows = (await res.json()) as Record<string, unknown>[];
-    const since = Date.now() - days * 24 * 60 * 60 * 1000;
-    const prospectCats = ["prospect", "recalled", "promoted", "optioned", "debut"];
-    return rows
-      .filter((r) => {
-        const cats = (r.categories as string[]) ?? [];
-        const pub = new Date(String(r.published_at ?? "")).getTime();
-        return cats.some((c) => prospectCats.includes(c)) && pub >= since;
-      })
-      .sort((a, b) =>
-        String(b.published_at ?? "").localeCompare(String(a.published_at ?? ""))
-      )
-      .map((row) => ({
-        id: String(row.id ?? ""),
-        source: (row.source ?? "rotowire") as NewsItem["source"],
-        playerName: String(row.player_name ?? ""),
-        team: String(row.team ?? ""),
-        category: deriveCategoryTag((row.categories as string[]) ?? []),
-        title: String(row.title ?? ""),
-        summary: String(row.summary ?? ""),
-        publishedAt: String(row.published_at ?? ""),
-        link: row.link ? String(row.link) : undefined,
-      }));
-  } catch {
-    return null;
-  }
+    if (res.ok) {
+      const rows = (await res.json()) as Record<string, unknown>[];
+      fromNews = rows
+        .filter((r) => {
+          const cats = (r.categories as string[]) ?? [];
+          const pub = new Date(String(r.published_at ?? "")).getTime();
+          return cats.some((c) => prospectCats.includes(c)) && pub >= since;
+        })
+        .map((row) => ({
+          id: `news-${String(row.id ?? "")}`,
+          source: (row.source ?? "rotowire") as NewsItem["source"],
+          playerName: String(row.player_name ?? ""),
+          team: String(row.team ?? ""),
+          category: deriveCategoryTag((row.categories as string[]) ?? []),
+          title: String(row.title ?? ""),
+          summary: String(row.summary ?? ""),
+          publishedAt: String(row.published_at ?? ""),
+          link: row.link ? String(row.link) : undefined,
+        }));
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const res = await fetch(`${baseUrl}/exports/player_transactions.json`);
+    if (res.ok) {
+      const rows = (await res.json()) as Record<string, unknown>[];
+      fromTxn = rows
+        .filter((r) => {
+          const cats = (r.categories as string[]) ?? [];
+          return cats.includes("prospect") && String(r.date ?? "") >= sinceDateOnly;
+        })
+        .map((row) => ({
+          id: `txn-${String(row.id ?? "")}`,
+          source: "mlb_api" as NewsItem["source"],
+          playerName: String(row.player_name ?? ""),
+          team: String(row.team ?? ""),
+          category: deriveCategoryFromTypeCode(String(row.type_code ?? ""), String(row.type_desc ?? "")),
+          title: String(row.type_desc ?? ""),
+          summary: String(row.description ?? ""),
+          publishedAt: String(row.date ?? ""),
+          link: undefined,
+        }));
+    }
+  } catch { /* ignore */ }
+
+  if (fromNews.length === 0 && fromTxn.length === 0) return null;
+  return [...fromNews, ...fromTxn].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt)
+  );
 }
 
 async function fetchInjuriesFromFile(days: number): Promise<InjuryItem[] | null> {
@@ -246,14 +311,14 @@ export async function handler(
       return json<NewsApiResponse<NewsItem>>({
         items: fromDb,
         updatedAt: now,
-        source: ["rotowire"],
+        source: ["rotowire", "mlb_api"],
       });
     }
     const fromFile = await fetchProspectsFromFile(days);
     return json<NewsApiResponse<NewsItem>>({
       items: fromFile ?? [],
       updatedAt: fromFile ? now : null,
-      source: fromFile ? ["rotowire"] : [],
+      source: fromFile ? ["rotowire", "mlb_api"] : [],
     });
   }
 
