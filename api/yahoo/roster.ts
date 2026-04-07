@@ -136,24 +136,18 @@ export function parseYahooRoster(data: unknown): YahooPlayer[] {
   }
 }
 
+// Parses response from GET /fantasy/v2/league/mlb.l.{id}/teams;use_login=1
 function parseTeamKey(data: unknown): string | null {
   try {
     const fc = (data as Record<string, unknown>)?.fantasy_content;
-    const users = (fc as Record<string, unknown>)?.users;
-    const userEntry = ((users as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.user;
-    if (!Array.isArray(userEntry) || userEntry.length < 2) return null;
+    // Response root is fantasy_content.league (array)
+    const leagueArr = (fc as Record<string, unknown>)?.league;
+    if (!Array.isArray(leagueArr) || leagueArr.length < 2) return null;
 
-    const games = (userEntry[1] as Record<string, unknown>)?.games;
-    const gameEntry = ((games as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.game;
-    if (!Array.isArray(gameEntry) || gameEntry.length < 2) return null;
+    const teamsObj = (leagueArr[1] as Record<string, unknown>)?.teams;
+    if (!teamsObj || typeof teamsObj !== "object") return null;
 
-    const leaguesObj = (gameEntry[1] as Record<string, unknown>)?.leagues;
-    const leagueEntry = ((leaguesObj as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.league;
-    if (!Array.isArray(leagueEntry) || leagueEntry.length < 2) return null;
-
-    const teamsObj = (leagueEntry[1] as Record<string, unknown>)?.teams;
     const count = Number((teamsObj as Record<string, unknown>)?.count ?? 0);
-
     for (let i = 0; i < count; i++) {
       const entry = (teamsObj as Record<string, unknown>)[String(i)];
       const teamArr = (entry as Record<string, unknown>)?.team;
@@ -162,15 +156,10 @@ function parseTeamKey(data: unknown): string | null {
       const metaList = teamArr[0] as Record<string, unknown>[];
       if (!Array.isArray(metaList)) continue;
 
-      // teams;use_login=1 already filters to the current user's teams,
-      // so is_owned_by_current_login is not included — just return first key found.
-      let teamKey = "";
       for (const meta of metaList) {
-        if (typeof meta.team_key === "string") { teamKey = meta.team_key; break; }
+        if (typeof meta.team_key === "string") return meta.team_key;
       }
-      if (teamKey) return teamKey;
     }
-
     return null;
   } catch {
     return null;
@@ -184,7 +173,8 @@ async function fetchUserTeamKey(
   yahooLeagueId: string
 ): Promise<string | null> {
   const leagueKey = `mlb.l.${yahooLeagueId}`;
-  const url = `https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=mlb/leagues;league_keys=${leagueKey}/teams;use_login=1?format=json`;
+  // Simple direct URL: league → teams filtered to current user's team
+  const url = `https://fantasysports.yahooapis.com/fantasy/v2/league/${leagueKey}/teams;use_login=1?format=json`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });

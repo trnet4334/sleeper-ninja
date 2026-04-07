@@ -171,6 +171,40 @@ function TableSection({
   );
 }
 
+function LeagueTabs({
+  leagues,
+  activeLeagueId,
+  onSelect
+}: {
+  leagues: LeagueDefinition[];
+  activeLeagueId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  if (leagues.length <= 1) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {leagues.map((league) => {
+        const isActive = league.id === activeLeagueId;
+        return (
+          <button
+            key={league.id}
+            type="button"
+            onClick={() => onSelect(league.id)}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+              isActive
+                ? "bg-primary text-on-primary"
+                : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
+            }`}
+          >
+            {league.name}
+            <span className="ml-1.5 opacity-60">{league.season}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function RosterContent({ activeYahooLeagueId }: { activeYahooLeagueId: string }) {
   const { hitters, pitchers, loading } = useYahooRoster(activeYahooLeagueId);
 
@@ -209,7 +243,7 @@ function RosterContent({ activeYahooLeagueId }: { activeYahooLeagueId: string })
 }
 
 export function MyRosterPage() {
-  const { leagues, activeLeague, addLeague } = useLeagues();
+  const { leagues, activeLeague, activeLeagueId, setActiveLeague, addLeague } = useLeagues();
   const { connected, loading: authLoading } = useYahooAuth();
   const [autoImporting, setAutoImporting] = useState(false);
   const importAttempted = useRef(false);
@@ -256,5 +290,10 @@ export function MyRosterPage() {
     );
   }
 
-  return <RosterContent activeYahooLeagueId={activeLeague?.yahooLeagueId ?? ""} />;
+  return (
+    <section className="space-y-6">
+      <LeagueTabs leagues={leagues} activeLeagueId={activeLeagueId} onSelect={setActiveLeague} />
+      <RosterContent activeYahooLeagueId={activeLeague?.yahooLeagueId ?? ""} />
+    </section>
+  );
 }
