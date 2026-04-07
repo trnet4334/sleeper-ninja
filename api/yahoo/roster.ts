@@ -225,20 +225,11 @@ function parsePlayerStats(data: unknown): Record<string, Record<string, string>>
   return result;
 }
 
-async function fetchYahooRoster(
+async function fetchStats(
   accessToken: string,
-  teamKey: string
+  players: YahooPlayer[]
 ): Promise<YahooPlayer[]> {
-  // Call 1: basic roster — known stable structure with selected_position
-  const rosterUrl = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster?format=json`;
-  const rosterResp = await fetch(rosterUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!rosterResp.ok) throw new Error(`Yahoo roster fetch failed: ${rosterResp.status}`);
-  const rosterData = await rosterResp.json();
-  const players = parseYahooRoster(rosterData);
-
   if (players.length === 0) return players;
-
-  // Call 2: season stats for these players, merged by playerKey
   const season = new Date().getFullYear();
   const keys = players.map((p) => p.playerKey).filter(Boolean).join(",");
   const statsUrl = `https://fantasysports.yahooapis.com/fantasy/v2/players;player_keys=${keys}/stats;type=season;season=${season}?format=json`;
@@ -249,8 +240,7 @@ async function fetchYahooRoster(
       const statsMap = parsePlayerStats(statsData);
       return players.map((p) => ({ ...p, stats: statsMap[p.playerKey] ?? {} }));
     }
-  } catch { /* stats fetch failed — return roster without stats */ }
-
+  } catch { /* non-fatal */ }
   return players;
 }
 
@@ -290,12 +280,32 @@ async function buildRosterResponse(
   leagueId: string,
   extraHeaders?: Record<string, string>
 ): Promise<Response> {
-  const teamKey = await fetchUserTeamKey(accessToken, leagueId);
+  const leagueKey = `mlb.l.${leagueId}`;
+  const teamUrl = `https://fantasysports.yahooapis.com/fantasy/v2/league/${leagueKey}/teams;use_login=1?format=json`;
+  const teamResp = await fetch(teamUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const teamRaw = await teamResp.json();
+  console.log("[debug] teamUrl status:", teamResp.status);
+  console.log("[debug] teamRaw:", JSON.stringify(teamRaw));
+
+  const teamKey = parseTeamKey(teamRaw);
+  console.log("[debug] teamKeyExtracted:", teamKey);
+
   if (!teamKey) {
-    return json({ status: "no_team" }, { status: 404 });
+    return json({ status: "no_team", debug: { teamStatus: teamResp.status, teamRaw } }, { status: 404 });
   }
-  const roster = await fetchYahooRoster(accessToken, teamKey);
-  const body = JSON.stringify({ status: "ok", leagueId, roster });
+
+  const rosterUrl = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster?format=json`;
+  const rosterResp = await fetch(rosterUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const rosterRaw = await rosterResp.json();
+  console.log("[debug] rosterUrl status:", rosterResp.status);
+  console.log("[debug] rosterRaw:", JSON.stringify(rosterRaw));
+
+  const players = parseYahooRoster(rosterRaw);
+  console.log("[debug] parsedPlayers count:", players.length);
+
+  // Fetch season stats and merge
+  const withStats = await fetchStats(accessToken, players);
+  const body = JSON.stringify({ status: "ok", leagueId, roster: withStats });
   return new Response(body, {
     status: 200,
     headers: { "Content-Type": "application/json", ...extraHeaders }
