@@ -341,14 +341,15 @@ def _save_f_scores(table: str, score_map: dict[tuple[str, int], float]) -> None:
 
 
 def _push_to_supabase(table: str, score_rows: list[dict]) -> None:
-    """Upsert {player_id, days_back, f_score} rows — only updates the f_score column."""
+    """Update f_score on existing rows only — does not create new rows."""
     url = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL", "")
     key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY", "")
     if not (url and key) or not score_rows:
         return
     from supabase import create_client
     client = create_client(url, key)
-    client.table(table).upsert(score_rows, on_conflict="player_id,days_back").execute()
+    for row in score_rows:
+        client.table(table).update({"f_score": row["f_score"]}).eq("player_id", row["player_id"]).eq("days_back", row["days_back"]).execute()
 
 
 def _load_injury_map() -> dict[str, str]:
