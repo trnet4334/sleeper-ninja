@@ -1,3 +1,7 @@
+import { webcrypto as nodeCrypto } from "node:crypto";
+// Use globalThis.crypto (Node 18.7+) with fallback to node:crypto webcrypto
+const webCrypto: Crypto = (globalThis.crypto ?? nodeCrypto) as unknown as Crypto;
+
 // ---------------------------------------------------------------------------
 // Yahoo OAuth token record
 // ---------------------------------------------------------------------------
@@ -93,7 +97,7 @@ export function clearCookieHeader(): string {
 async function deriveKey(secret: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const raw = encoder.encode(secret.padEnd(32, "0").slice(0, 32));
-  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  return webCrypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
 function toBase64url(buf: ArrayBuffer): string {
@@ -111,10 +115,10 @@ function fromBase64url(str: string): Uint8Array {
 
 export async function encryptToken(payload: object, secret: string): Promise<string> {
   const key = await deriveKey(secret);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const iv = webCrypto.getRandomValues(new Uint8Array(12));
   const data = new TextEncoder().encode(JSON.stringify(payload));
 
-  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  const cipherBuf = await webCrypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
 
   // AES-GCM appends 16-byte auth tag at the end of the ciphertext
   const cipherBytes = new Uint8Array(cipherBuf);
@@ -142,7 +146,7 @@ export async function decryptToken(encrypted: string, secret: string): Promise<o
     const key = await deriveKey(secret);
     const ivBuf = iv.buffer.slice(iv.byteOffset, iv.byteOffset + iv.byteLength) as ArrayBuffer;
     const decryptBuf = combined.buffer.slice(combined.byteOffset, combined.byteOffset + combined.byteLength) as ArrayBuffer;
-    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, key, decryptBuf);
+    const plainBuf = await webCrypto.subtle.decrypt({ name: "AES-GCM", iv: ivBuf }, key, decryptBuf);
     return JSON.parse(new TextDecoder().decode(plainBuf)) as object;
   } catch {
     return null;

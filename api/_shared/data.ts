@@ -1,5 +1,6 @@
 import { json } from "./http.js";
 import { relatedStatsForCategory } from "../../src/lib/statMapping.js";
+import { queryPlayersFromDb, queryPlayersFromFile } from "./supabase.js";
 
 export interface DataQuery {
   leagueId: string;
@@ -257,7 +258,6 @@ export async function queryPlayersWithFallback(
   query: DataQuery,
   rosterState?: SamplePlayer["rosterState"]
 ) {
-  const { queryPlayersFromDb, queryPlayersFromFile } = await import("./supabase.js");
   const selectedStats = expandStats(query.categories, query.stats);
 
   // 1. Try Supabase (configured via env vars)
