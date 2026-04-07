@@ -112,17 +112,13 @@ function parseTeamKey(data: unknown): string | null {
       const metaList = teamArr[0] as Record<string, unknown>[];
       if (!Array.isArray(metaList)) continue;
 
+      // teams;use_login=1 already filters to the current user's teams,
+      // so is_owned_by_current_login is not included — just return first key found.
       let teamKey = "";
-      let isOwnedByLogin = false;
-
       for (const meta of metaList) {
-        if (typeof meta.team_key === "string") teamKey = meta.team_key;
-        if (meta.is_owned_by_current_login === 1 || meta.is_owned_by_current_login === "1") {
-          isOwnedByLogin = true;
-        }
+        if (typeof meta.team_key === "string") { teamKey = meta.team_key; break; }
       }
-
-      if (isOwnedByLogin && teamKey) return teamKey;
+      if (teamKey) return teamKey;
     }
 
     return null;

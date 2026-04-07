@@ -22,6 +22,33 @@ function slugify(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
+function parseLeaguesFromGame(gameEntry: unknown[]): LeagueResult[] {
+  if (!Array.isArray(gameEntry) || gameEntry.length < 2) return [];
+  const leaguesObj = (gameEntry[1] as Record<string, unknown>)?.leagues;
+  if (!leaguesObj || typeof leaguesObj !== "object") return [];
+
+  const count = Number((leaguesObj as Record<string, unknown>)?.count ?? 0);
+  const results: LeagueResult[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const entry = (leaguesObj as Record<string, unknown>)[String(i)];
+    const leagueArr = (entry as Record<string, unknown>)?.league;
+    if (!Array.isArray(leagueArr) || leagueArr.length === 0) continue;
+
+    const meta = leagueArr[0] as Record<string, string>;
+    if (!meta.league_id || !meta.name) continue;
+
+    results.push({
+      id: slugify(meta.name),
+      name: meta.name,
+      yahooLeagueId: meta.league_id,
+      season: parseInt(meta.season ?? String(new Date().getFullYear()), 10)
+    });
+  }
+
+  return results;
+}
+
 export function parseYahooLeagues(data: unknown): LeagueResult[] {
   try {
     const fc = (data as Record<string, unknown>)?.fantasy_content;
@@ -30,29 +57,15 @@ export function parseYahooLeagues(data: unknown): LeagueResult[] {
     if (!Array.isArray(userEntry) || userEntry.length < 2) return [];
 
     const games = (userEntry[1] as Record<string, unknown>)?.games;
-    const gameEntry = ((games as Record<string, unknown>)?.["0"] as Record<string, unknown>)?.game;
-    if (!Array.isArray(gameEntry) || gameEntry.length < 2) return [];
+    if (!games || typeof games !== "object") return [];
 
-    const leaguesObj = (gameEntry[1] as Record<string, unknown>)?.leagues;
-    if (!leaguesObj || typeof leaguesObj !== "object") return [];
-
-    const count = Number((leaguesObj as Record<string, unknown>)?.count ?? 0);
+    const gameCount = Number((games as Record<string, unknown>)?.count ?? 0);
     const results: LeagueResult[] = [];
 
-    for (let i = 0; i < count; i++) {
-      const entry = (leaguesObj as Record<string, unknown>)[String(i)];
-      const leagueArr = (entry as Record<string, unknown>)?.league;
-      if (!Array.isArray(leagueArr) || leagueArr.length === 0) continue;
-
-      const meta = leagueArr[0] as Record<string, string>;
-      if (!meta.league_id || !meta.name) continue;
-
-      results.push({
-        id: slugify(meta.name),
-        name: meta.name,
-        yahooLeagueId: meta.league_id,
-        season: parseInt(meta.season ?? String(new Date().getFullYear()), 10)
-      });
+    // Iterate all games (seasons) — game_codes=mlb returns multiple seasons
+    for (let g = 0; g < gameCount; g++) {
+      const gameEntry = ((games as Record<string, unknown>)[String(g)] as Record<string, unknown>)?.game;
+      results.push(...parseLeaguesFromGame(gameEntry as unknown[]));
     }
 
     return results;
@@ -94,7 +107,7 @@ async function refreshYahooToken(
 
 async function fetchYahooLeagues(accessToken: string): Promise<LeagueResult[]> {
   const url =
-    "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=mlb/leagues?format=json";
+    "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_codes=mlb/leagues?format=json";
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
