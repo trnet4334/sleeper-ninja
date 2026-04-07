@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 
 export interface YahooPlayer {
+  playerKey: string;
   playerName: string;
   team: string;
+  teamFull: string;
   position: string;
+  eligiblePositions: string[];
   selectedPosition: string;
+  isStarting: boolean;
   status: string;
+  statusFull: string;
+  injuryNote: string;
+  headshotUrl: string;
+  stats: Record<string, string>;
 }
 
 const PITCHER_POSITIONS = ["SP", "RP", "P"];

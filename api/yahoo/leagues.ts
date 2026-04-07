@@ -107,7 +107,7 @@ async function refreshYahooToken(
 
 async function fetchYahooLeagues(accessToken: string): Promise<LeagueResult[]> {
   const url =
-    "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_codes=mlb/leagues?format=json";
+    "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=mlb/leagues?format=json";
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });

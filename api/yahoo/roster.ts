@@ -12,12 +12,31 @@ import {
 export const config = { runtime: "edge" };
 
 export interface YahooPlayer {
+  playerKey: string;
   playerName: string;
   team: string;
+  teamFull: string;
   position: string;
+  eligiblePositions: string[];
   selectedPosition: string;
+  isStarting: boolean;
   status: string;
+  statusFull: string;
+  injuryNote: string;
+  headshotUrl: string;
+  stats: Record<string, string>;
 }
+
+// Standard Yahoo Fantasy MLB stat IDs (stable across seasons)
+const MLB_STAT_NAMES: Record<string, string> = {
+  // Batting
+  "7": "AB", "8": "R", "9": "H", "10": "HR", "11": "RBI",
+  "12": "SB", "13": "CS", "16": "BB", "17": "SO",
+  "60": "AVG", "61": "OBP", "62": "SLG", "63": "OPS",
+  // Pitching
+  "26": "IP", "28": "W", "29": "L", "32": "SV", "33": "HLD",
+  "36": "K", "37": "BB_P", "38": "ER", "46": "ERA", "48": "WHIP", "50": "QS"
+};
 
 // --- Parsing ---
 
@@ -43,41 +62,72 @@ export function parseYahooRoster(data: unknown): YahooPlayer[] {
       const metaList = playerArr[0] as Record<string, unknown>[];
       if (!Array.isArray(metaList)) continue;
 
+      let playerKey = "";
       let playerName = "";
       let team = "";
+      let teamFull = "";
       let position = "";
       let status = "";
+      let statusFull = "";
+      let injuryNote = "";
+      let headshotUrl = "";
+      const eligiblePositions: string[] = [];
 
       for (const meta of metaList) {
+        if (typeof meta.player_key === "string") playerKey = meta.player_key;
         if (meta.name && typeof (meta.name as Record<string, unknown>).full === "string") {
           playerName = (meta.name as Record<string, string>).full;
         }
-        if (typeof meta.editorial_team_abbr === "string") {
-          team = meta.editorial_team_abbr;
+        if (typeof meta.editorial_team_abbr === "string") team = meta.editorial_team_abbr;
+        if (typeof meta.editorial_team_full_name === "string") teamFull = meta.editorial_team_full_name;
+        if (typeof meta.display_position === "string") position = meta.display_position;
+        if (typeof meta.status === "string") status = meta.status;
+        if (typeof meta.status_full === "string") statusFull = meta.status_full;
+        if (typeof meta.injury_note === "string") injuryNote = meta.injury_note;
+        if (meta.headshot && typeof (meta.headshot as Record<string, unknown>).url === "string") {
+          headshotUrl = (meta.headshot as Record<string, string>).url;
         }
-        if (typeof meta.display_position === "string") {
-          position = meta.display_position;
-        }
-        if (typeof meta.status === "string") {
-          status = meta.status;
+        if (meta.eligible_positions && Array.isArray(meta.eligible_positions)) {
+          for (const ep of meta.eligible_positions as Record<string, unknown>[]) {
+            if (typeof ep.position === "string") eligiblePositions.push(ep.position);
+          }
         }
       }
 
-      // playerArr[1] has selected_position
+      // playerArr[1] has selected_position, is_starting, and player_stats
       const playerData = playerArr[1] as Record<string, unknown>;
-      const selPosObj = (playerData?.selected_position as Record<string, unknown>[]);
+
+      const selPosArr = playerData?.selected_position as Record<string, unknown>[];
       let selectedPosition = "";
-      if (Array.isArray(selPosObj)) {
-        for (const sp of selPosObj) {
-          if (typeof sp.position === "string") {
-            selectedPosition = sp.position;
-            break;
+      let isStarting = false;
+      if (Array.isArray(selPosArr)) {
+        for (const sp of selPosArr) {
+          if (typeof sp.position === "string") selectedPosition = sp.position;
+          if (sp.is_starting === 1 || sp.is_starting === "1") isStarting = true;
+        }
+      }
+
+      // Parse season stats if present (from /roster/players/stats endpoint)
+      const stats: Record<string, string> = {};
+      const playerStats = (playerData?.player_stats as Record<string, unknown>);
+      if (playerStats) {
+        const statList = playerStats.stats as Record<string, unknown>[];
+        if (Array.isArray(statList)) {
+          for (const item of statList) {
+            const s = item.stat as Record<string, string>;
+            if (s && s.stat_id && s.value !== undefined && s.value !== "-") {
+              const name = MLB_STAT_NAMES[s.stat_id];
+              if (name) stats[name] = s.value;
+            }
           }
         }
       }
 
       if (!playerName) continue;
-      results.push({ playerName, team, position, selectedPosition, status });
+      results.push({
+        playerKey, playerName, team, teamFull, position, eligiblePositions,
+        selectedPosition, isStarting, status, statusFull, injuryNote, headshotUrl, stats
+      });
     }
 
     return results;
@@ -147,7 +197,8 @@ async function fetchYahooRoster(
   accessToken: string,
   teamKey: string
 ): Promise<YahooPlayer[]> {
-  const url = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster?format=json`;
+  const season = new Date().getFullYear();
+  const url = `https://fantasysports.yahooapis.com/fantasy/v2/team/${teamKey}/roster/players/stats;type=season;season=${season}?format=json`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
