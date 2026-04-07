@@ -23,7 +23,7 @@ function yahooPlayerToRow(player: YahooPlayer) {
     position: player.position.split(",")[0].trim(),
     playerType: "hitter" as const,
     rosterState: "roster" as const,
-    metrics: {} as Record<string, number | string>,
+    metrics: player.stats as Record<string, number | string>,
     trend: [],
     delta: 0,
     recommendationScore: 0
