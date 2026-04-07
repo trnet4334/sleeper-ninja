@@ -9,3 +9,5 @@ export function handler(): Response {
     }
   });
 }
+
+export default handler;

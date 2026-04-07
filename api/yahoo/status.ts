@@ -10,3 +10,5 @@ export async function handler(
   const token = await parseCookieToken(cookieHeader, cookieSecret);
   return json({ connected: token !== null });
 }
+
+export default handler;

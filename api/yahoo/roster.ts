@@ -100,3 +100,5 @@ export async function handler(
     waiver: [{ playerName: "Jackson Chourio", position: "OF", source: "waiver" }]
   });
 }
+
+export default handler;

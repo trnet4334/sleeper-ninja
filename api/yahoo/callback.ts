@@ -85,3 +85,5 @@ export async function handler(
     return json({ status: "exchange_failed" }, { status: 502 });
   }
 }
+
+export default handler;

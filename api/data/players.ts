@@ -14,3 +14,5 @@ export async function handler(request: Request = new Request("http://localhost/a
     players
   });
 }
+
+export default handler;

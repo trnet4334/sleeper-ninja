@@ -93,3 +93,5 @@ export async function handler(
 
   return json({ status: "ok", leagueId, ...STUB_MATCHUP });
 }
+
+export default handler;

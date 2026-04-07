@@ -16,3 +16,5 @@ export function handler(
     headers: { Location: authUrl }
   });
 }
+
+export default handler;

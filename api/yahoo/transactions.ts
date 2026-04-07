@@ -92,3 +92,5 @@ export async function handler(
 
   return json({ status: "ok", leagueId, transactions: [] });
 }
+
+export default handler;

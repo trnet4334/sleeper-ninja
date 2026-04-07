@@ -7,3 +7,5 @@ export async function handler(request: Request = new Request("http://localhost/a
     ...(await matchupSummaryAsync(query))
   });
 }
+
+export default handler;

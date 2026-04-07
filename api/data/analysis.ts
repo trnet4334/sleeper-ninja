@@ -7,3 +7,5 @@ export async function handler(request: Request = new Request("http://localhost/a
     ...(await analysisSummaryAsync(query))
   });
 }
+
+export default handler;

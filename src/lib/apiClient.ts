@@ -1,11 +1,7 @@
-import { handler as analysisHandler } from "../../api/data/analysis";
-import { handler as matchupHandler } from "../../api/data/matchup";
-import { handler as playersHandler } from "../../api/data/players";
-
 type QueryValue = string | number | undefined;
 
 function buildUrl(path: string, query: Record<string, QueryValue>) {
-  const url = new URL(path, "http://localhost");
+  const url = new URL(path, window.location.origin);
   Object.entries(query).forEach(([key, value]) => {
     if (value === undefined || value === "") {
       return;
@@ -76,16 +72,16 @@ export interface MatchupResponse {
 }
 
 export async function fetchPlayers(query: Record<string, QueryValue>) {
-  const response = await playersHandler(new Request(buildUrl("/api/data/players", query)));
+  const response = await fetch(buildUrl("/api/data/players", query));
   return resolveJson<PlayersResponse>(response);
 }
 
 export async function fetchAnalysis(query: Record<string, QueryValue>) {
-  const response = await analysisHandler(new Request(buildUrl("/api/data/analysis", query)));
+  const response = await fetch(buildUrl("/api/data/analysis", query));
   return resolveJson<AnalysisResponse>(response);
 }
 
 export async function fetchMatchup(query: Record<string, QueryValue>) {
-  const response = await matchupHandler(new Request(buildUrl("/api/data/matchup", query)));
+  const response = await fetch(buildUrl("/api/data/matchup", query));
   return resolveJson<MatchupResponse>(response);
 }
