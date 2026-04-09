@@ -10,7 +10,7 @@ export function SegmentedControl<T extends string>({
   "aria-label"?: string;
 }) {
   return (
-    <div role="group" aria-label={ariaLabel} className="flex w-fit rounded-lg bg-surface-container-lowest p-1">
+    <div role="group" aria-label={ariaLabel} className="flex w-fit flex-wrap rounded-lg bg-surface-container-lowest p-1">
       {options.map((option) => (
         <button
           key={option}

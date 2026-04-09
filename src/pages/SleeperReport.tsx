@@ -6,8 +6,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PlayerDetailCard } from "@/components/ui/PlayerDetailCard";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatChip } from "@/components/ui/StatChip";
+import {
+  filterSleeperPlayersByTab,
+  isPitcherSleeperTab,
+  sleeperTabs,
+  type SleeperTab
+} from "./sleeperReportRoles";
 
-type Tab = "hitter" | "sp" | "rp";
 type SortDir = "asc" | "desc";
 
 function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -15,10 +20,17 @@ function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
   return <span className="ml-1 text-[8px] text-primary">{dir === "asc" ? "▲" : "▼"}</span>;
 }
 
-const TAB_LABELS: Record<Tab, string> = {
-  hitter: "Hitter Analytics",
-  sp: "SP Analytics",
-  rp: "RP Analytics",
+const TAB_LABELS: Record<SleeperTab, string> = {
+  C: "C Analytics",
+  "1B": "1B Analytics",
+  "2B": "2B Analytics",
+  "3B": "3B Analytics",
+  SS: "SS Analytics",
+  OF: "OF Analytics",
+  DH: "DH Analytics",
+  UTIL: "Hitter Analytics",
+  SP: "SP Analytics",
+  RP: "RP Analytics",
 };
 
 function formatValue(value: number | string): string {
@@ -42,11 +54,10 @@ function RoleTag({ role }: { role: string }) {
 }
 
 export function SleeperReportPage() {
-  const [tab, setTab] = useState<Tab>("hitter");
+  const [tab, setTab] = useState<SleeperTab>("UTIL");
   const { hitterCats, pitcherCats } = useCategories();
 
-  // SP and RP both query the pitcher data source
-  const apiPlayerType = tab === "hitter" ? "hitter" : "pitcher";
+  const apiPlayerType = isPitcherSleeperTab(tab) ? "pitcher" : "hitter";
   const { data, loading } = useSleeperAnalysis(apiPlayerType);
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -56,16 +67,9 @@ export function SleeperReportPage() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 25;
 
-  const categories = tab === "hitter" ? hitterCats : pitcherCats;
+  const categories = isPitcherSleeperTab(tab) ? pitcherCats : hitterCats;
 
-  // Filter pitchers by role when on SP / RP tab.
-  // Compound roles like "SP,RP" appear in both tabs.
-  const filteredPlayers = useMemo(() => {
-    const all = data?.players ?? [];
-    if (tab === "sp") return all.filter((p) => !p.position || p.position.includes("SP"));
-    if (tab === "rp") return all.filter((p) => p.position.includes("RP") || p.position === "CL");
-    return all;
-  }, [data?.players, tab]);
+  const filteredPlayers = useMemo(() => filterSleeperPlayersByTab(data?.players ?? [], tab), [data?.players, tab]);
 
   const players = useMemo(() => {
     return [...filteredPlayers].sort((a, b) => {
@@ -124,7 +128,7 @@ export function SleeperReportPage() {
   );
 
   const topPlayer = players[0];
-  const hotThreshold = tab === "hitter" ? 0.05 : 0.5;
+  const hotThreshold = isPitcherSleeperTab(tab) ? 0.5 : 0.05;
   const hotCount = players.filter((p) => p.delta >= hotThreshold).length;
 
   return (
@@ -142,9 +146,9 @@ export function SleeperReportPage() {
           </h3>
           <SegmentedControl
             value={tab}
-            options={["hitter", "sp", "rp"] as const}
+            options={sleeperTabs}
             onChange={setTab}
-            aria-label="Player type"
+            aria-label="Sleeper roles"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -163,7 +167,7 @@ export function SleeperReportPage() {
           tone="tertiary"
         />
         <MetricCard
-          label={tab === "hitter" ? "Hot Hitters" : tab === "sp" ? "Hot Starters" : "Hot Arms"}
+          label={!isPitcherSleeperTab(tab) ? "Hot Hitters" : tab === "SP" ? "Hot Starters" : "Hot Arms"}
           value={String(hotCount)}
           note="Active Hot Streaks"
           tone="neutral"
@@ -207,7 +211,13 @@ export function SleeperReportPage() {
         <div className="flex flex-col gap-4 border-b border-white/5 bg-surface-container-low/60 px-6 py-4 md:flex-row md:items-center md:justify-between">
           <span className="text-xs font-bold uppercase tracking-[0.22em] text-on-surface-variant">
             Sleeper Candidates:{" "}
-            {tab === "hitter" ? "Hitters" : tab === "sp" ? "Starting Pitchers" : "Relief Pitchers"}
+            {!isPitcherSleeperTab(tab)
+              ? tab === "UTIL"
+                ? "All Hitters"
+                : `${tab} Hitters`
+              : tab === "SP"
+                ? "Starting Pitchers"
+                : "Relief Pitchers"}
           </span>
           <span className="w-fit rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
             Alpha Algorithm
@@ -228,7 +238,7 @@ export function SleeperReportPage() {
                     <SortArrow active={sortKey === key} dir={sortDir} />
                   </th>
                 ))}
-                {tab !== "hitter" && (
+                {isPitcherSleeperTab(tab) && (
                   <th
                     scope="col"
                     className="cursor-pointer select-none px-6 py-4 hover:text-on-surface"
@@ -280,7 +290,7 @@ export function SleeperReportPage() {
                 >
                   <td className="px-6 py-4 font-semibold text-on-surface">{player.playerName}</td>
                   <td className="px-6 py-4 text-on-surface-variant">{player.team}</td>
-                  {tab !== "hitter" && (
+                  {isPitcherSleeperTab(tab) && (
                     <td className="px-6 py-4">
                       <RoleTag role={player.position} />
                     </td>
@@ -302,9 +312,15 @@ export function SleeperReportPage() {
               ))}
               {players.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={visibleMetricColumns.length + (tab !== "hitter" ? 5 : 4)}
+                  <td colSpan={visibleMetricColumns.length + (isPitcherSleeperTab(tab) ? 5 : 4)}
                     className="px-6 py-10 text-center text-sm text-on-surface-variant">
-                    No {tab === "sp" ? "starting pitchers" : "relief pitchers"} found.
+                    No {!isPitcherSleeperTab(tab)
+                      ? tab === "UTIL"
+                        ? "hitters"
+                        : `${tab} hitters`
+                      : tab === "SP"
+                        ? "starting pitchers"
+                        : "relief pitchers"} found.
                   </td>
                 </tr>
               )}

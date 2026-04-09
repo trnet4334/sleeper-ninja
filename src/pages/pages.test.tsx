@@ -26,6 +26,8 @@ describe("prototype pages", () => {
   it("renders sleeper report with analysis sections", async () => {
     wrap(<SleeperReportPage />);
     expect(screen.getByText("Market Inefficiencies")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "UTIL" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OF" })).toBeInTheDocument();
     expect(await screen.findByText(/Sleeper Candidates:/)).toBeInTheDocument();
   });
 
